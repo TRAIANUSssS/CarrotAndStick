@@ -4,6 +4,27 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly detail: unknown;
+
+  constructor(status: number, detail: unknown) {
+    super(`API request failed: ${status}`);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+const parseResponseBody = async (response: Response): Promise<unknown> => {
+  const contentType = response.headers.get("Content-Type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return response.text();
+};
+
 const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
   const headers = new Headers(options.headers);
   const hasJsonBody = options.body !== undefined && !(options.body instanceof FormData);
@@ -20,7 +41,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    throw new ApiError(response.status, await parseResponseBody(response));
   }
 
   if (response.status === 204) {
@@ -39,4 +60,3 @@ export const apiClient = {
   put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: "PUT", body }),
 };
-
