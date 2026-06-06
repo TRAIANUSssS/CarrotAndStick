@@ -27,6 +27,7 @@ backend/
 frontend/
   src/
     api/
+    components/
     assets/
     features/
     i18n/
@@ -49,6 +50,8 @@ Routes should stay thin. Ownership checks and reusable behavior should live in s
 
 - `src/api/client.ts`: fetch wrapper with `credentials: "include"`.
 - `src/api/auth.ts`: typed auth API.
+- `src/api/tasks.ts` and `src/api/stats.ts`: typed task and summary API.
+- `src/components/*`: shared shell, modal, and navigation UI.
 - `src/features/auth`: auth context, forms, and guard.
 - `src/router/AppRouter.tsx`: app routes.
 - `src/i18n`: RU/EN dictionaries.
@@ -72,4 +75,3 @@ All primary keys use UUID.
 - `punishment`
 
 The `null` daily state is represented by absence of a `task_marks` row.
-

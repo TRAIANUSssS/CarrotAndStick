@@ -278,3 +278,47 @@ Rules:
 - user cannot set a mark for a future date;
 - task ownership is enforced the same way as other task endpoints;
 - `null` is represented by deleting the `task_marks` row.
+
+## Stats
+
+### GET `/api/stats/summary?period=...&anchor_date=YYYY-MM-DD`
+
+Returns totals for the home summary block.
+
+Allowed `period` values:
+
+- `day`
+- `week`
+- `month`
+- `year`
+- `all_time`
+
+Response:
+
+```json
+{
+  "period": "week",
+  "start_date": "2026-06-01",
+  "end_date": "2026-06-07",
+  "reward_count": 15,
+  "punishment_count": 4
+}
+```
+
+For `all_time`:
+
+```json
+{
+  "period": "all_time",
+  "start_date": null,
+  "end_date": null,
+  "reward_count": 120,
+  "punishment_count": 28
+}
+```
+
+Rules:
+
+- week uses Monday through Sunday;
+- counts include only the current user's marks;
+- `anchor_date` is still provided for `all_time`, even though bounds return `null`.

@@ -12,6 +12,7 @@ Current tests:
 
 - `backend/tests/test_auth.py`
 - `backend/tests/test_tasks.py`
+- `backend/tests/test_stats.py`
 
 Covered:
 
@@ -27,6 +28,8 @@ Covered:
 - task totals;
 - mark create/update/delete flow;
 - mark date validation for pre-creation and future dates;
+- stats summary period aggregation;
+- stats summary auth and user scoping;
 - ownership checks;
 - blank task name validation.
 
@@ -43,13 +46,14 @@ npm run build
 
 No frontend test framework is installed yet.
 
-Add frontend tests later when task UI and mark toggle behavior exist. Useful future coverage:
+Add frontend tests later around the new task UI. Useful next coverage:
 
 - auth guard redirects;
-- register/login form validation;
 - task card reward/punishment click behavior;
+- add/edit/archive task modal flows;
 - archived tasks UI;
-- period selectors and stats rendering.
+- summary period rotation and rendering;
+- date picker state and refresh behavior.
 
 ## Manual Smoke
 
@@ -59,6 +63,7 @@ Useful manual checks:
 http://localhost:5173/register
 http://localhost:5173/login
 http://localhost:5173/app/tasks
+http://localhost:5173/app/tasks/archived
 ```
 
 Backend health:
