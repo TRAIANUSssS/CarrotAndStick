@@ -21,7 +21,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://carrot_stick:carrot_stick@postgres:5432/carrot_stick}
-      JWT_SECRET: ${JWT_SECRET:-change-me}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-strong-secret-with-at-least-32-bytes}
       JWT_EXPIRES_MINUTES: ${JWT_EXPIRES_MINUTES:-43200}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
@@ -51,4 +51,3 @@ services:
 
 volumes:
   postgres_data:
-

@@ -9,7 +9,10 @@ class Settings(BaseSettings):
 
     app_env: str = Field(default="dev", alias="APP_ENV")
     database_url: str = Field(alias="DATABASE_URL")
-    jwt_secret: str = Field(default="change-me", alias="JWT_SECRET")
+    jwt_secret: str = Field(
+        default="change-me-to-a-strong-secret-with-at-least-32-bytes",
+        alias="JWT_SECRET",
+    )
     jwt_expires_minutes: int = Field(default=43200, alias="JWT_EXPIRES_MINUTES")
     auth_cookie_name: str = Field(default="carrot_stick_session", alias="AUTH_COOKIE_NAME")
     cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")

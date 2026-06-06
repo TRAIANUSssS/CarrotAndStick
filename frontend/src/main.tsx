@@ -6,17 +6,8 @@ import carrotReward from "./assets/iconpacks/carrot_stick/reward.svg";
 import carrotPunishment from "./assets/iconpacks/carrot_stick/punishment.svg";
 import cookieReward from "./assets/iconpacks/cookie_whip/reward.svg";
 import cookiePunishment from "./assets/iconpacks/cookie_whip/punishment.svg";
-
-const getApiBaseUrl = () => {
-  const configuredUrl = import.meta.env.VITE_API_BASE_URL;
-
-  if (configuredUrl) {
-    return configuredUrl;
-  }
-
-  const { protocol, hostname } = window.location;
-  return `${protocol}//${hostname}:8000`;
-};
+import { apiClient } from "./api/client";
+import { getApiBaseUrl } from "./api/config";
 
 function App() {
   const [apiStatus, setApiStatus] = React.useState<"checking" | "ok" | "error">(
@@ -27,12 +18,10 @@ function App() {
   React.useEffect(() => {
     const controller = new AbortController();
 
-    fetch(`${apiBaseUrl}/api/health`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((response) => {
-        setApiStatus(response.ok ? "ok" : "error");
+    apiClient
+      .get<{ status: string }>("/api/health", { signal: controller.signal })
+      .then(() => {
+        setApiStatus("ok");
       })
       .catch(() => {
         if (!controller.signal.aborted) {
