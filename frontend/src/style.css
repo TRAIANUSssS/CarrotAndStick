@@ -1,0 +1,130 @@
+:root {
+  color: #1e1d1a;
+  background: #f6f4ef;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: stretch center;
+  padding: 0;
+}
+
+.mobile-frame {
+  width: min(100%, 480px);
+  min-height: 100vh;
+  padding: 32px 22px;
+  background: #fffdf8;
+  border-inline: 1px solid #e4ded2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+.brand-icons {
+  display: grid;
+  grid-template-columns: repeat(4, 52px);
+  gap: 10px;
+  align-items: center;
+}
+
+.brand-icons img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  padding: 8px;
+  border: 1px solid #ece3d5;
+  border-radius: 8px;
+  background: #fff8ea;
+}
+
+h1 {
+  margin: 0;
+  color: #1d1b17;
+  font-size: 36px;
+  line-height: 1.08;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.lead {
+  margin: 0;
+  color: #635b4d;
+  font-size: 17px;
+}
+
+.status-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.status-list div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e6ded0;
+  border-radius: 8px;
+  background: #fbf7ef;
+}
+
+.status-list dt {
+  color: #746b5d;
+  font-size: 13px;
+}
+
+.status-list dd {
+  margin: 0;
+  color: #1f1d19;
+  overflow-wrap: anywhere;
+}
+
+.status-list dd[data-state="ok"] {
+  color: #267346;
+}
+
+.status-list dd[data-state="error"] {
+  color: #a13a2a;
+}
+
+.status-list dd[data-state="checking"] {
+  color: #7a6751;
+}
+
+@media (min-width: 720px) {
+  .app-shell {
+    padding: 24px;
+  }
+
+  .mobile-frame {
+    min-height: calc(100vh - 48px);
+    border: 1px solid #e4ded2;
+    border-radius: 8px;
+  }
+}
+
