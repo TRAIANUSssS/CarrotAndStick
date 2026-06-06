@@ -127,3 +127,96 @@ def test_stats_summary_is_scoped_to_current_user(client: TestClient, cleanup_use
         owner = db.scalar(select(User).where(User.login == owner_login))
         owner_marks = db.scalars(select(TaskMark).where(TaskMark.user_id == owner.id)).all()
         assert len(owner_marks) == 1
+
+
+def test_stats_tasks_returns_period_totals_and_zero_rows(client: TestClient, cleanup_users: list[str]) -> None:
+    register(client, cleanup_users)
+    active_task = create_task(client, "Read book")
+    zero_task = create_task(client, "Walk")
+    archived_task = create_task(client, "Gym")
+
+    with SessionLocal() as db:
+        active = db.scalar(select(Task).where(Task.id == active_task["id"]))
+        zero = db.scalar(select(Task).where(Task.id == zero_task["id"]))
+        archived = db.scalar(select(Task).where(Task.id == archived_task["id"]))
+        active.created_at = datetime(2026, 5, 20, tzinfo=UTC)
+        zero.created_at = datetime(2026, 5, 18, tzinfo=UTC)
+        archived.created_at = datetime(2026, 5, 10, tzinfo=UTC)
+        archived.archived_at = datetime(2026, 6, 5, tzinfo=UTC)
+        db.add_all([active, zero, archived])
+        db.commit()
+
+    put_mark(client, active_task["id"], date(2026, 6, 2), "reward")
+    put_mark(client, active_task["id"], date(2026, 6, 4), "punishment")
+    put_mark(client, archived_task["id"], date(2026, 6, 3), "reward")
+
+    response = client.get("/api/stats/tasks?period=week&anchor_date=2026-06-06")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "period": "week",
+        "start_date": "2026-06-01",
+        "end_date": "2026-06-07",
+        "total_reward": 2,
+        "total_punishment": 1,
+        "tasks": [
+            {
+                "task_id": zero_task["id"],
+                "name": "Walk",
+                "archived_at": None,
+                "reward_count": 0,
+                "punishment_count": 0,
+            },
+            {
+                "task_id": active_task["id"],
+                "name": "Read book",
+                "archived_at": None,
+                "reward_count": 1,
+                "punishment_count": 1,
+            },
+            {
+                "task_id": archived_task["id"],
+                "name": "Gym",
+                "archived_at": "2026-06-05T00:00:00Z",
+                "reward_count": 1,
+                "punishment_count": 0,
+            },
+        ],
+    }
+
+
+def test_stats_tasks_excludes_tasks_created_after_period_start(client: TestClient, cleanup_users: list[str]) -> None:
+    register(client, cleanup_users)
+    older_task = create_task(client, "Older")
+    newer_task = create_task(client, "Newer")
+
+    with SessionLocal() as db:
+        older = db.scalar(select(Task).where(Task.id == older_task["id"]))
+        newer = db.scalar(select(Task).where(Task.id == newer_task["id"]))
+        older.created_at = datetime(2026, 6, 1, tzinfo=UTC)
+        newer.created_at = datetime(2026, 6, 3, tzinfo=UTC)
+        db.add_all([older, newer])
+        db.commit()
+
+    put_mark(client, older_task["id"], date(2026, 6, 6), "reward")
+    put_mark(client, newer_task["id"], date(2026, 6, 6), "punishment")
+
+    response = client.get("/api/stats/tasks?period=week&anchor_date=2026-06-06")
+
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["tasks"]] == ["Older"]
+
+
+def test_stats_tasks_all_time_includes_all_user_tasks(client: TestClient, cleanup_users: list[str]) -> None:
+    register(client, cleanup_users)
+    first = create_task(client, "First")
+    second = create_task(client, "Second")
+
+    put_mark(client, first["id"], date.today(), "reward")
+
+    response = client.get(f"/api/stats/tasks?period=all_time&anchor_date={date.today().isoformat()}")
+
+    assert response.status_code == 200
+    assert response.json()["total_reward"] == 1
+    assert response.json()["total_punishment"] == 0
+    assert [item["name"] for item in response.json()["tasks"]] == ["First", "Second"]

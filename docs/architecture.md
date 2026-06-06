@@ -20,6 +20,7 @@ backend/
     db/
     models/
     schemas/
+    scripts/
     services/
     main.py
   tests/
@@ -40,6 +41,7 @@ frontend/
 - `app/api/routes/*`: HTTP endpoints.
 - `app/schemas/*`: Pydantic request/response schemas.
 - `app/services/*`: business logic.
+- `app/scripts/*`: repeatable local maintenance and demo-data scripts.
 - `app/models/*`: SQLAlchemy ORM models.
 - `app/api/deps.py`: shared FastAPI dependencies, including DB session and current user.
 - `app/db/session.py`: SQLAlchemy engine/session factory.

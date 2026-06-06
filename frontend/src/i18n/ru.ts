@@ -78,9 +78,15 @@ export const ru = {
     empty: "Архив пуст.",
   },
   statsPage: {
-    eyebrow: "Дальше по плану",
+    eyebrow: "Статистика",
     title: "Статистика",
-    placeholder: "Экран статистики запланирован на следующий этап. Backend summary уже готов для верхнего блока главной страницы.",
+    periodSelector: "Период статистики",
+    previous: "Назад",
+    next: "Вперёд",
+    totalReward: "Всего reward",
+    totalPunishment: "Всего punishment",
+    archivedAt: "В архиве с",
+    empty: "Для выбранного периода нет задач в статистике.",
   },
   accountPage: {
     eyebrow: "Аккаунт",

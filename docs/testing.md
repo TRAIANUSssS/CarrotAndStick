@@ -30,6 +30,7 @@ Covered:
 - mark date validation for pre-creation and future dates;
 - stats summary period aggregation;
 - stats summary auth and user scoping;
+- stats task rows, zero rows, period filtering, and all-time behavior;
 - ownership checks;
 - blank task name validation.
 
@@ -53,6 +54,7 @@ Add frontend tests later around the new task UI. Useful next coverage:
 - add/edit/archive task modal flows;
 - archived tasks UI;
 - summary period rotation and rendering;
+- stats period navigation and rendering;
 - date picker state and refresh behavior.
 
 ## Manual Smoke
@@ -64,10 +66,17 @@ http://localhost:5173/register
 http://localhost:5173/login
 http://localhost:5173/app/tasks
 http://localhost:5173/app/tasks/archived
+http://localhost:5173/app/stats
 ```
 
 Backend health:
 
 ```bash
 curl http://localhost:8000/api/health
+```
+
+Demo seed:
+
+```bash
+docker compose exec -T backend python -m app.scripts.seed_en_user_stats
 ```

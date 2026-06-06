@@ -78,9 +78,15 @@ export const en = {
     empty: "Archive is empty.",
   },
   statsPage: {
-    eyebrow: "Next phase",
+    eyebrow: "Stats",
     title: "Stats",
-    placeholder: "The full stats page is planned for the next phase. The backend summary for the home header is already in place.",
+    periodSelector: "Stats period",
+    previous: "Previous",
+    next: "Next",
+    totalReward: "Total reward",
+    totalPunishment: "Total punishment",
+    archivedAt: "Archived on",
+    empty: "No tasks match the selected stats period.",
   },
   accountPage: {
     eyebrow: "Account",

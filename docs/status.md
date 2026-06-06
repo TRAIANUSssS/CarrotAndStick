@@ -11,6 +11,7 @@ Last updated: 2026-06-06
 - Phase 5: tasks backend.
 - Phase 6: marks backend.
 - Phase 7: tasks frontend.
+- Phase 8: stats.
 - Minimal backend tests are in place.
 
 ## Running Services
@@ -49,10 +50,18 @@ In dev, frontend derives backend URL as `http://<current-host>:8000` when `VITE_
 - Frontend has `/login`, `/register`, guarded `/app/tasks`, `/app/tasks/archived`, `/app/stats`, and `/app/account`.
 - `/app/tasks` shows summary, date picker, active task list, mark toggle, add-task modal, task details modal, and archive entrypoint.
 - `/app/tasks/archived` shows archived tasks and restore flow.
-- `/app/stats` and `/app/account` exist as placeholders for later phases, with navigation already in place.
+- `/app/stats` shows period selector, period navigation, totals, and per-task statistics rows.
+- `/app/account` still remains a placeholder for the later settings phase.
 - Backend tasks API supports create, edit, archive, restore, pin, unpin, list active, list archived, and details.
 - Backend marks API supports reward/punishment/null upsert by task and date with ownership and date validation.
-- Backend stats API currently exposes `GET /api/stats/summary` for the home summary block.
+- Backend stats API exposes `GET /api/stats/summary` and `GET /api/stats/tasks`.
+
+## Demo Data
+
+- `en_user` is seeded for stats demo.
+- Login: `en_user`
+- Password: `secret-password`
+- Seed command: `docker compose exec -T backend python -m app.scripts.seed_en_user_stats`
 
 ## Verification
 
@@ -63,4 +72,4 @@ docker compose exec -T backend pytest -q
 npm run build
 ```
 
-Current backend test count: 19 tests.
+Current backend test count: 22 tests.

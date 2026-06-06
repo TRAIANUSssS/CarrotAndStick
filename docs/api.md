@@ -322,3 +322,43 @@ Rules:
 - week uses Monday through Sunday;
 - counts include only the current user's marks;
 - `anchor_date` is still provided for `all_time`, even though bounds return `null`.
+
+### GET `/api/stats/tasks?period=...&anchor_date=YYYY-MM-DD`
+
+Returns detailed task rows for the stats page.
+
+Response:
+
+```json
+{
+  "period": "week",
+  "start_date": "2026-06-01",
+  "end_date": "2026-06-07",
+  "total_reward": 15,
+  "total_punishment": 4,
+  "tasks": [
+    {
+      "task_id": "...",
+      "name": "Read book",
+      "archived_at": null,
+      "reward_count": 7,
+      "punishment_count": 0
+    },
+    {
+      "task_id": "...",
+      "name": "Gym",
+      "archived_at": "2026-06-05T00:00:00Z",
+      "reward_count": 0,
+      "punishment_count": 1
+    }
+  ]
+}
+```
+
+Rules:
+
+- for `day|week|month|year`, include tasks that already existed at the start of the period;
+- if a task existed at period start but has `0/0`, it still appears;
+- archived tasks remain in stats;
+- for `all_time`, return all user tasks;
+- rows are scoped to the current user only.

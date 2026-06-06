@@ -670,6 +670,122 @@ img {
   font-weight: 700;
 }
 
+.stats-nav {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.stats-range {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.stats-range strong {
+  font-size: 16px;
+}
+
+.stats-range span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.stats-summary-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.detail-grid__card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-soft);
+}
+
+.detail-grid__card span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detail-grid__card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.detail-grid__card--reward {
+  background: var(--reward-bg);
+  border-color: rgba(84, 123, 77, 0.22);
+  color: var(--reward);
+}
+
+.detail-grid__card--punishment {
+  background: var(--punishment-bg);
+  border-color: rgba(154, 66, 52, 0.22);
+  color: var(--punishment);
+}
+
+.stats-task-list {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.stats-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(221, 203, 177, 0.85);
+  border-radius: 18px;
+  background: rgba(255, 251, 244, 0.82);
+}
+
+.stats-task-row__title strong {
+  display: block;
+  font-size: 17px;
+}
+
+.stats-task-row__title span {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.stats-task-row__values {
+  display: flex;
+  gap: 8px;
+}
+
+.stats-value {
+  min-width: 58px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.stats-value--reward {
+  color: var(--reward);
+  background: var(--reward-bg);
+}
+
+.stats-value--punishment {
+  color: var(--punishment);
+  background: var(--punishment-bg);
+}
+
 @keyframes page-enter {
   from {
     opacity: 0;
