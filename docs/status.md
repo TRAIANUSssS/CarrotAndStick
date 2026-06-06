@@ -9,6 +9,7 @@ Last updated: 2026-06-06
 - Phase 3: backend auth.
 - Phase 4: frontend auth.
 - Phase 5: tasks backend.
+- Phase 6: marks backend.
 - Minimal backend tests are in place.
 
 ## Running Services
@@ -47,6 +48,7 @@ In dev, frontend derives backend URL as `http://<current-host>:8000` when `VITE_
 - Frontend has `/login`, `/register`, and guarded `/app/tasks`.
 - `/app/tasks` is currently a placeholder showing current user/settings and logout.
 - Backend tasks API supports create, edit, archive, restore, pin, unpin, list active, list archived, and details.
+- Backend marks API supports reward/punishment/null upsert by task and date with ownership and date validation.
 
 ## Verification
 
@@ -57,5 +59,4 @@ docker compose exec -T backend pytest -q
 npm run build
 ```
 
-Current backend test count: 14 tests.
-
+Current backend test count: 16 tests.

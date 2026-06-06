@@ -145,6 +145,10 @@ def test_task_endpoints_require_ownership(client: TestClient, cleanup_users: lis
     assert client.patch(f"/api/tasks/{task['id']}", json={"name": "Stolen"}).status_code == 404
     assert client.post(f"/api/tasks/{task['id']}/archive").status_code == 404
     assert client.post(f"/api/tasks/{task['id']}/pin").status_code == 404
+    assert client.put(
+        f"/api/tasks/{task['id']}/marks/{date.today().isoformat()}",
+        json={"status": "reward"},
+    ).status_code == 404
 
 
 def test_create_task_rejects_blank_name(client: TestClient, cleanup_users: list[str]) -> None:
@@ -154,3 +158,66 @@ def test_create_task_rejects_blank_name(client: TestClient, cleanup_users: list[
 
     assert response.status_code == 422
 
+
+def test_put_mark_creates_updates_and_deletes_mark(
+    client: TestClient,
+    cleanup_users: list[str],
+) -> None:
+    register(client, cleanup_users)
+    task = create_task(client, "Track me")
+    today = date.today().isoformat()
+
+    create_response = client.put(f"/api/tasks/{task['id']}/marks/{today}", json={"status": "reward"})
+    assert create_response.status_code == 200
+    assert create_response.json() == {
+        "task_id": task["id"],
+        "date": today,
+        "status": "reward",
+    }
+
+    update_response = client.put(f"/api/tasks/{task['id']}/marks/{today}", json={"status": "punishment"})
+    assert update_response.status_code == 200
+    assert update_response.json()["status"] == "punishment"
+
+    list_response = client.get(f"/api/tasks?date={today}")
+    assert list_response.status_code == 200
+    assert list_response.json()["items"][0]["selected_date_status"] == "punishment"
+
+    details_response = client.get(f"/api/tasks/{task['id']}")
+    assert details_response.status_code == 200
+    assert details_response.json()["total_reward"] == 0
+    assert details_response.json()["total_punishment"] == 1
+
+    delete_response = client.put(f"/api/tasks/{task['id']}/marks/{today}", json={"status": None})
+    assert delete_response.status_code == 200
+    assert delete_response.json()["status"] is None
+
+    list_after_delete = client.get(f"/api/tasks?date={today}")
+    assert list_after_delete.status_code == 200
+    assert list_after_delete.json()["items"][0]["selected_date_status"] is None
+
+    with SessionLocal() as db:
+        marks = db.scalars(select(TaskMark).where(TaskMark.task_id == task["id"])).all()
+        assert marks == []
+
+
+def test_put_mark_rejects_invalid_dates(client: TestClient, cleanup_users: list[str]) -> None:
+    register(client, cleanup_users)
+    task = create_task(client, "Boundaries")
+    task_created = date.fromisoformat(task["created_at"][:10])
+    before_creation = (task_created - timedelta(days=1)).isoformat()
+    future_date = (date.today() + timedelta(days=1)).isoformat()
+
+    before_creation_response = client.put(
+        f"/api/tasks/{task['id']}/marks/{before_creation}",
+        json={"status": "reward"},
+    )
+    assert before_creation_response.status_code == 400
+    assert before_creation_response.json()["detail"] == "Cannot set mark before task creation date"
+
+    future_response = client.put(
+        f"/api/tasks/{task['id']}/marks/{future_date}",
+        json={"status": "reward"},
+    )
+    assert future_response.status_code == 400
+    assert future_response.json()["detail"] == "Cannot set mark for a future date"

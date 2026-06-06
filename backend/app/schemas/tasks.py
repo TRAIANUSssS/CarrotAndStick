@@ -1,9 +1,11 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 TaskStatus = str | None
+MarkStatus = Literal["reward", "punishment"] | None
 
 
 class TaskCreateRequest(BaseModel):
@@ -67,3 +69,12 @@ class TaskDetailResponse(TaskRead):
     total_reward: int
     total_punishment: int
 
+
+class TaskMarkUpsertRequest(BaseModel):
+    status: MarkStatus
+
+
+class TaskMarkResponse(BaseModel):
+    task_id: UUID
+    date: date
+    status: MarkStatus

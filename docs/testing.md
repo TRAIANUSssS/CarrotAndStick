@@ -25,6 +25,8 @@ Covered:
 - pin/unpin sorting;
 - history omits dates before task creation;
 - task totals;
+- mark create/update/delete flow;
+- mark date validation for pre-creation and future dates;
 - ownership checks;
 - blank task name validation.
 
@@ -64,4 +66,3 @@ Backend health:
 ```bash
 curl http://localhost:8000/api/health
 ```
-

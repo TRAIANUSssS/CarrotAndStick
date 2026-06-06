@@ -8,6 +8,8 @@ from app.schemas.tasks import (
     TaskCreateRequest,
     TaskDetailResponse,
     TaskListResponse,
+    TaskMarkResponse,
+    TaskMarkUpsertRequest,
     TaskRead,
     TaskUpdateRequest,
 )
@@ -19,6 +21,7 @@ from app.services.tasks import (
     list_archived_tasks,
     pin_task,
     restore_task,
+    set_task_mark,
     unpin_task,
     update_task,
 )
@@ -70,3 +73,13 @@ def pin(task_id: UUID, current_user: CurrentUser, db: DbSession) -> TaskRead:
 def unpin(task_id: UUID, current_user: CurrentUser, db: DbSession) -> TaskRead:
     return unpin_task(db, current_user, task_id)
 
+
+@router.put("/{task_id}/marks/{mark_date}", response_model=TaskMarkResponse)
+def upsert_mark(
+    task_id: UUID,
+    mark_date: date,
+    payload: TaskMarkUpsertRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> TaskMarkResponse:
+    return set_task_mark(db, current_user, task_id, mark_date, payload.status)

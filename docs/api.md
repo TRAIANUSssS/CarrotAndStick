@@ -234,3 +234,47 @@ Response:
 }
 ```
 
+## Marks
+
+### PUT `/api/tasks/{task_id}/marks/{date}`
+
+Creates, updates, or removes a mark for the given task and date.
+
+Path:
+
+```text
+date = YYYY-MM-DD
+```
+
+Request:
+
+```json
+{
+  "status": "reward"
+}
+```
+
+Allowed `status` values:
+
+- `"reward"`
+- `"punishment"`
+- `null` to remove the existing mark
+
+Response:
+
+```json
+{
+  "task_id": "...",
+  "date": "2026-06-06",
+  "status": "reward"
+}
+```
+
+Rules:
+
+- backend accepts the final state, frontend handles toggle behavior;
+- user can edit past dates;
+- user cannot set a mark before `task.created_at::date`;
+- user cannot set a mark for a future date;
+- task ownership is enforced the same way as other task endpoints;
+- `null` is represented by deleting the `task_marks` row.

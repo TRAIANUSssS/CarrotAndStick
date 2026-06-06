@@ -6,7 +6,7 @@ from sqlalchemy import Select, case, func, select
 from sqlalchemy.orm import Session
 
 from app.models import Task, TaskMark, User
-from app.schemas.tasks import TaskDetailResponse, TaskHistoryItem, TaskListItem
+from app.schemas.tasks import TaskDetailResponse, TaskHistoryItem, TaskListItem, TaskMarkResponse
 
 
 def get_user_task(db: Session, user: User, task_id: UUID) -> Task:
@@ -174,3 +174,54 @@ def get_task_totals(db: Session, user: User, task_ids: list[UUID]) -> dict[UUID,
         for task_id, rewards, punishments in rows
     }
 
+
+def set_task_mark(
+    db: Session,
+    user: User,
+    task_id: UUID,
+    mark_date: date,
+    mark_status: str | None,
+) -> TaskMarkResponse:
+    task = get_user_task(db, user, task_id)
+    created_on = task.created_at.date()
+    today = datetime.now(UTC).date()
+
+    if mark_date < created_on:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot set mark before task creation date",
+        )
+    if mark_date > today:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot set mark for a future date",
+        )
+
+    existing_mark = db.scalar(
+        select(TaskMark).where(
+            TaskMark.task_id == task.id,
+            TaskMark.user_id == user.id,
+            TaskMark.mark_date == mark_date,
+        ),
+    )
+
+    if mark_status is None:
+        if existing_mark is not None:
+            db.delete(existing_mark)
+            db.commit()
+        return TaskMarkResponse(task_id=task.id, date=mark_date, status=None)
+
+    if existing_mark is None:
+        existing_mark = TaskMark(
+            task_id=task.id,
+            user_id=user.id,
+            mark_date=mark_date,
+            status=mark_status,
+        )
+    else:
+        existing_mark.status = mark_status
+
+    db.add(existing_mark)
+    db.commit()
+
+    return TaskMarkResponse(task_id=task.id, date=mark_date, status=mark_status)
