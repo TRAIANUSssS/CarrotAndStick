@@ -5,6 +5,7 @@ import carrotRewardIcon from "../assets/iconpacks/carrot_stick/reward.svg";
 import cookiePunishmentIcon from "../assets/iconpacks/cookie_whip/punishment.svg";
 import cookieRewardIcon from "../assets/iconpacks/cookie_whip/reward.svg";
 import { authApi, type IconPackId, type Language } from "../api/auth";
+import { ApiError } from "../api/client";
 import { AppScaffold } from "../components/AppScaffold";
 import { useAuth } from "../features/auth/AuthContext";
 
@@ -23,6 +24,7 @@ export function AppAccountPage() {
   const { dictionary, logout, settings, updateSettings, user } = useAuth();
   const [language, setLanguage] = React.useState<Language>("ru");
   const [iconPack, setIconPack] = React.useState<IconPackId>("cookie_whip");
+  const [oldPassword, setOldPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [repeatPassword, setRepeatPassword] = React.useState("");
   const [settingsMessage, setSettingsMessage] = React.useState<string | null>(null);
@@ -62,7 +64,7 @@ export function AppAccountPage() {
     setPasswordMessage(null);
     setPasswordError(null);
 
-    if (!newPassword || !repeatPassword) {
+    if (!oldPassword || !newPassword || !repeatPassword) {
       setPasswordError("required");
       return;
     }
@@ -79,12 +81,13 @@ export function AppAccountPage() {
 
     setIsChangingPassword(true);
     try {
-      await authApi.changePassword({ new_password: newPassword });
+      await authApi.changePassword({ old_password: oldPassword, new_password: newPassword });
+      setOldPassword("");
       setNewPassword("");
       setRepeatPassword("");
       setPasswordMessage(dictionary.accountPage.passwordSaved);
-    } catch {
-      setPasswordError("generic");
+    } catch (error) {
+      setPasswordError(getPasswordErrorKey(error));
     } finally {
       setIsChangingPassword(false);
     }
@@ -160,6 +163,17 @@ export function AppAccountPage() {
 
           <form className="modal-form" onSubmit={handlePasswordSubmit}>
             <label>
+              <span>{dictionary.accountPage.oldPassword}</span>
+              <input
+                autoComplete="current-password"
+                maxLength={256}
+                type="password"
+                value={oldPassword}
+                onChange={(event) => setOldPassword(event.target.value)}
+              />
+            </label>
+
+            <label>
               <span>{dictionary.accountPage.newPassword}</span>
               <input
                 autoComplete="new-password"
@@ -199,3 +213,10 @@ export function AppAccountPage() {
     </AppScaffold>
   );
 }
+  const getPasswordErrorKey = (error: unknown) => {
+    if (error instanceof ApiError && error.status === 400) {
+      return "invalidOldPassword";
+    }
+
+    return "generic";
+  };

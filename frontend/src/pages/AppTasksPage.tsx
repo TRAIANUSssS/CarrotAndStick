@@ -37,6 +37,11 @@ function getLocalDateInputValue() {
   return `${year}-${month}-${day}`;
 }
 
+function clampToToday(value: string) {
+  const today = getLocalDateInputValue();
+  return value > today ? today : value;
+}
+
 function getNextTaskStatus(currentStatus: TaskStatus, clickedStatus: Exclude<TaskStatus, null>): TaskStatus {
   return currentStatus === clickedStatus ? null : clickedStatus;
 }
@@ -482,12 +487,14 @@ export function AppTasksPage() {
   React.useEffect(() => {
     let isMounted = true;
     setIsLoadingSummary(true);
+    setPageError(null);
 
     statsApi
       .summary(activePeriod, selectedDate)
       .then((response) => {
         if (isMounted) {
           setSummary(response);
+          setPageError(null);
         }
       })
       .catch((error: unknown) => {
@@ -682,7 +689,8 @@ export function AppTasksPage() {
                 className="date-input"
                 type="date"
                 value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
+                max={getLocalDateInputValue()}
+                onChange={(event) => setSelectedDate(clampToToday(event.target.value))}
                 aria-label={dictionary.tasksPage.selectedDate}
               />
             </label>
@@ -750,7 +758,7 @@ export function AppTasksPage() {
         />
       ) : null}
 
-      {selectedTaskId !== null ? (
+      {selectedTaskId !== null && !isArchiveConfirmOpen ? (
         <TaskDetailsModal
           task={selectedTask}
           language={language}

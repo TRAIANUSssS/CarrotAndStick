@@ -93,6 +93,7 @@ Request:
 
 ```json
 {
+  "old_password": "old-password",
   "new_password": "new-password"
 }
 ```

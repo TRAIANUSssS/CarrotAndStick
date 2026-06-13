@@ -116,7 +116,7 @@ def test_login_rejects_wrong_password(client: TestClient, cleanup_users: list[st
     assert response.status_code == 401
 
 
-def test_change_password_updates_password_without_old_password(
+def test_change_password_requires_old_password_and_updates_password(
     client: TestClient,
     cleanup_users: list[str],
 ) -> None:
@@ -126,9 +126,15 @@ def test_change_password_updates_password_without_old_password(
     register_response = client.post("/api/auth/register", json=register_payload(login, "old-password"))
     assert register_response.status_code == 201
 
+    wrong_old_response = client.post(
+        "/api/auth/change-password",
+        json={"old_password": "wrong-password", "new_password": "new-password"},
+    )
+    assert wrong_old_response.status_code == 400
+
     change_response = client.post(
         "/api/auth/change-password",
-        json={"new_password": "new-password"},
+        json={"old_password": "old-password", "new_password": "new-password"},
     )
     assert change_response.status_code == 204
 

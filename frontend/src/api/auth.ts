@@ -30,6 +30,7 @@ export type LoginPayload = {
 };
 
 export type ChangePasswordPayload = {
+  old_password: string;
   new_password: string;
 };
 

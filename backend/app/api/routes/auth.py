@@ -48,7 +48,7 @@ def me(current_user: CurrentUser) -> AuthResponse:
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
 def change_password(payload: ChangePasswordRequest, current_user: CurrentUser, db: DbSession) -> Response:
-    change_user_password(db, current_user, payload.new_password)
+    change_user_password(db, current_user, payload.old_password, payload.new_password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

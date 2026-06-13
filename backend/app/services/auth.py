@@ -77,7 +77,13 @@ def authenticate_user(db: Session, login: str, password: str) -> User:
     return user
 
 
-def change_user_password(db: Session, user: User, new_password: str) -> None:
+def change_user_password(db: Session, user: User, old_password: str, new_password: str) -> None:
+    if not verify_password(old_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Old password is incorrect",
+        )
+
     user.password_hash = hash_password(new_password)
     db.add(user)
     db.commit()

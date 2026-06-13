@@ -16,6 +16,18 @@ function getLocalDateInputValue() {
   return `${year}-${month}-${day}`;
 }
 
+function formatDateValue(dateValue: Date) {
+  const year = dateValue.getFullYear();
+  const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+  const day = String(dateValue.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateValue(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError && typeof error.detail === "object" && error.detail !== null) {
     const detail = "detail" in error.detail ? error.detail.detail : undefined;
@@ -52,23 +64,52 @@ function formatTimestamp(language: string, value: string | null) {
 }
 
 function shiftAnchorDate(anchorDate: string, period: StatsPeriod, direction: -1 | 1) {
-  const [year, month, day] = anchorDate.split("-").map(Number);
-  const nextDate = new Date(year, month - 1, day);
+  const nextDate = parseDateValue(anchorDate);
 
   if (period === "day") {
     nextDate.setDate(nextDate.getDate() + direction);
   } else if (period === "week") {
     nextDate.setDate(nextDate.getDate() + direction * 7);
   } else if (period === "month") {
+    const originalDay = nextDate.getDate();
+    nextDate.setDate(1);
     nextDate.setMonth(nextDate.getMonth() + direction);
+    const maxDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+    nextDate.setDate(Math.min(originalDay, maxDay));
   } else if (period === "year") {
-    nextDate.setFullYear(nextDate.getFullYear() + direction);
+    const originalMonth = nextDate.getMonth();
+    const originalDay = nextDate.getDate();
+    nextDate.setDate(1);
+    nextDate.setFullYear(nextDate.getFullYear() + direction, originalMonth, 1);
+    const maxDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+    nextDate.setDate(Math.min(originalDay, maxDay));
   }
 
-  const nextYear = nextDate.getFullYear();
-  const nextMonth = String(nextDate.getMonth() + 1).padStart(2, "0");
-  const nextDay = String(nextDate.getDate()).padStart(2, "0");
-  return `${nextYear}-${nextMonth}-${nextDay}`;
+  return formatDateValue(nextDate);
+}
+
+function getPeriodEndDate(anchorDate: string, period: StatsPeriod) {
+  const periodDate = parseDateValue(anchorDate);
+
+  if (period === "all_time") {
+    return null;
+  }
+
+  if (period === "day") {
+    return anchorDate;
+  }
+
+  if (period === "week") {
+    const endDate = new Date(periodDate);
+    endDate.setDate(periodDate.getDate() + (6 - periodDate.getDay() + 7) % 7);
+    return formatDateValue(endDate);
+  }
+
+  if (period === "month") {
+    return formatDateValue(new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 0));
+  }
+
+  return formatDateValue(new Date(periodDate.getFullYear(), 11, 31));
 }
 
 export function AppStatsPage() {
@@ -107,7 +148,10 @@ export function AppStatsPage() {
     };
   }, [anchorDate, dictionary.common.genericError, period]);
 
+  const today = getLocalDateInputValue();
   const canNavigatePeriod = period !== "all_time";
+  const currentPeriodEnd = getPeriodEndDate(anchorDate, period);
+  const canNavigateForward = canNavigatePeriod && currentPeriodEnd !== null && currentPeriodEnd < today;
 
   return (
     <AppScaffold>
@@ -155,7 +199,7 @@ export function AppStatsPage() {
               className="secondary-button"
               onClick={() => setAnchorDate((current) => shiftAnchorDate(current, period, 1))}
               type="button"
-              disabled={!canNavigatePeriod}
+              disabled={!canNavigateForward}
             >
               {dictionary.statsPage.next}
             </button>
