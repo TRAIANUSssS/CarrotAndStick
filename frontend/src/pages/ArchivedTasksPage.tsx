@@ -6,7 +6,9 @@ import { tasksApi } from "../api/tasks";
 import { ApiError } from "../api/client";
 import { AppScaffold } from "../components/AppScaffold";
 import { Modal } from "../components/Modal";
+import { StatusIcon } from "../components/StatusIcon";
 import { useAuth } from "../features/auth/AuthContext";
+import { formatTimestamp } from "../lib/format";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError && typeof error.detail === "object" && error.detail !== null) {
@@ -19,17 +21,9 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function formatTimestamp(language: string, value: string) {
-  return new Intl.DateTimeFormat(language, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
 export function ArchivedTasksPage() {
   const navigate = useNavigate();
-  const { dictionary, language } = useAuth();
+  const { dictionary, language, settings } = useAuth();
   const [tasks, setTasks] = React.useState<TaskRead[]>([]);
   const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
   const [selectedTask, setSelectedTask] = React.useState<TaskDetail | null>(null);
@@ -37,6 +31,7 @@ export function ArchivedTasksPage() {
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorText, setErrorText] = React.useState<string | null>(null);
+  const iconPack = settings?.icon_pack ?? "cookie_whip";
 
   const loadArchivedTasks = React.useCallback(() => {
     setIsLoading(true);
@@ -84,7 +79,7 @@ export function ArchivedTasksPage() {
 
   return (
     <AppScaffold>
-      <section className="tasks-page">
+      <section className="app-page tasks-page">
         <section className="section-block">
           <header className="section-block__header">
             <div>
@@ -139,12 +134,21 @@ export function ArchivedTasksPage() {
                   <dt>{dictionary.tasksPage.createdAt}</dt>
                   <dd>{formatTimestamp(language, selectedTask.created_at)}</dd>
                 </div>
-                <div>
-                  <dt>{dictionary.tasksPage.totalReward}</dt>
+              </dl>
+
+              <dl className="detail-grid detail-grid--totals">
+                <div className="detail-grid__card detail-grid__card--reward">
+                  <dt>
+                    <StatusIcon iconPack={iconPack} status="reward" label={dictionary.tasksPage.rewardShort} />
+                    <span>{dictionary.tasksPage.rewardShort}</span>
+                  </dt>
                   <dd>{selectedTask.total_reward}</dd>
                 </div>
-                <div>
-                  <dt>{dictionary.tasksPage.totalPunishment}</dt>
+                <div className="detail-grid__card detail-grid__card--punishment">
+                  <dt>
+                    <StatusIcon iconPack={iconPack} status="punishment" label={dictionary.tasksPage.punishmentShort} />
+                    <span>{dictionary.tasksPage.punishmentShort}</span>
+                  </dt>
                   <dd>{selectedTask.total_punishment}</dd>
                 </div>
               </dl>

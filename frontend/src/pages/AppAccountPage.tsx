@@ -1,24 +1,19 @@
 import React from "react";
 
-import carrotPunishmentIcon from "../assets/iconpacks/carrot_stick/punishment.svg";
-import carrotRewardIcon from "../assets/iconpacks/carrot_stick/reward.svg";
-import cookiePunishmentIcon from "../assets/iconpacks/cookie_whip/punishment.svg";
-import cookieRewardIcon from "../assets/iconpacks/cookie_whip/reward.svg";
 import { authApi, type IconPackId, type Language } from "../api/auth";
 import { ApiError } from "../api/client";
 import { AppScaffold } from "../components/AppScaffold";
+import { StatusIcon } from "../components/StatusIcon";
 import { useAuth } from "../features/auth/AuthContext";
+import { ICON_PACK_OPTIONS } from "../lib/iconPacks";
 
-const iconPackPreview: Record<IconPackId, { reward: string; punishment: string }> = {
-  carrot_stick: {
-    reward: carrotRewardIcon,
-    punishment: carrotPunishmentIcon,
-  },
-  cookie_whip: {
-    reward: cookieRewardIcon,
-    punishment: cookiePunishmentIcon,
-  },
-};
+function getPasswordErrorKey(error: unknown) {
+  if (error instanceof ApiError && error.status === 400) {
+    return "invalidOldPassword" as const;
+  }
+
+  return "generic" as const;
+}
 
 export function AppAccountPage() {
   const { dictionary, logout, settings, updateSettings, user } = useAuth();
@@ -43,8 +38,14 @@ export function AppAccountPage() {
     setIconPack(settings.icon_pack);
   }, [settings]);
 
+  const hasUnsavedSettings = settings !== null && (language !== settings.language || iconPack !== settings.icon_pack);
+
   const handleSettingsSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!hasUnsavedSettings) {
+      return;
+    }
+
     setSettingsMessage(null);
     setSettingsError(null);
     setIsSavingSettings(true);
@@ -95,14 +96,14 @@ export function AppAccountPage() {
 
   return (
     <AppScaffold>
-      <section className="tasks-page">
-        <section className="section-block">
+      <section className="app-page tasks-page">
+        <section className="section-block section-block--compact">
           <p className="eyebrow">{dictionary.accountPage.eyebrow}</p>
           <h1 className="page-title">{dictionary.accountPage.title}</h1>
           <dl className="detail-grid">
             <div>
               <dt>{dictionary.accountPage.login}</dt>
-              <dd>{user?.login ?? "—"}</dd>
+              <dd>{user?.login ?? "-"}</dd>
             </div>
           </dl>
         </section>
@@ -124,7 +125,7 @@ export function AppAccountPage() {
             <div className="field-label">
               <span>{dictionary.accountPage.iconPack}</span>
               <div className="icon-pack-grid">
-                {(["cookie_whip", "carrot_stick"] as IconPackId[]).map((option) => (
+                {ICON_PACK_OPTIONS.map((option) => (
                   <button
                     key={option}
                     className={`icon-pack-card${iconPack === option ? " icon-pack-card--active" : ""}`}
@@ -132,15 +133,18 @@ export function AppAccountPage() {
                     type="button"
                     aria-pressed={iconPack === option}
                   >
-                    <strong>
-                      {option === "cookie_whip"
-                        ? dictionary.accountPage.iconPackCookieWhip
-                        : dictionary.accountPage.iconPackCarrotStick}
-                    </strong>
+                    <div className="icon-pack-card__header">
+                      <strong>
+                        {option === "cookie_whip"
+                          ? dictionary.accountPage.iconPackCookieWhip
+                          : dictionary.accountPage.iconPackCarrotStick}
+                      </strong>
+                      {iconPack === option ? <span className="task-badge">{dictionary.accountPage.selected}</span> : null}
+                    </div>
                     <span>{dictionary.accountPage.preview}</span>
                     <div className="icon-pack-card__preview">
-                      <img alt={dictionary.tasksPage.reward} src={iconPackPreview[option].reward} />
-                      <img alt={dictionary.tasksPage.punishment} src={iconPackPreview[option].punishment} />
+                      <StatusIcon iconPack={option} status="reward" label={dictionary.tasksPage.rewardShort} />
+                      <StatusIcon iconPack={option} status="punishment" label={dictionary.tasksPage.punishmentShort} />
                     </div>
                   </button>
                 ))}
@@ -150,9 +154,11 @@ export function AppAccountPage() {
             {settingsMessage ? <p className="form-note">{settingsMessage}</p> : null}
             {settingsError ? <p className="form-error">{dictionary.accountPage.errors[settingsError]}</p> : null}
 
-            <button className="primary-button" disabled={isSavingSettings} type="submit">
-              {dictionary.accountPage.saveSettings}
-            </button>
+            {hasUnsavedSettings ? (
+              <button className="primary-button" disabled={isSavingSettings} type="submit">
+                {dictionary.accountPage.saveSettings}
+              </button>
+            ) : null}
           </form>
         </section>
 
@@ -204,7 +210,10 @@ export function AppAccountPage() {
           </form>
         </section>
 
-        <section className="section-block">
+        <section className="section-block section-block--compact">
+          <div className="section-block__header">
+            <h2>{dictionary.accountPage.sessionTitle}</h2>
+          </div>
           <button className="secondary-button" onClick={() => void logout()} type="button">
             {dictionary.accountPage.logout}
           </button>
@@ -213,10 +222,4 @@ export function AppAccountPage() {
     </AppScaffold>
   );
 }
-  const getPasswordErrorKey = (error: unknown) => {
-    if (error instanceof ApiError && error.status === 400) {
-      return "invalidOldPassword";
-    }
 
-    return "generic";
-  };

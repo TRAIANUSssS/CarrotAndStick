@@ -199,7 +199,7 @@ def test_stats_tasks_returns_period_totals_and_zero_rows(client: TestClient, cle
     }
 
 
-def test_stats_tasks_excludes_tasks_created_after_period_start(client: TestClient, cleanup_users: list[str]) -> None:
+def test_stats_tasks_includes_tasks_created_during_selected_period(client: TestClient, cleanup_users: list[str]) -> None:
     register(client, cleanup_users)
     older_task = create_task(client, "Older")
     newer_task = create_task(client, "Newer")
@@ -218,7 +218,46 @@ def test_stats_tasks_excludes_tasks_created_after_period_start(client: TestClien
     response = client.get("/api/stats/tasks?period=week&anchor_date=2026-06-06")
 
     assert response.status_code == 200
-    assert [item["name"] for item in response.json()["tasks"]] == ["Older"]
+    assert [item["name"] for item in response.json()["tasks"]] == ["Older", "Newer"]
+
+
+def test_stats_tasks_excludes_tasks_created_after_selected_period(client: TestClient, cleanup_users: list[str]) -> None:
+    register(client, cleanup_users)
+    past_task = create_task(client, "Past")
+    future_task = create_task(client, "Future")
+
+    with SessionLocal() as db:
+        past = db.scalar(select(Task).where(Task.id == past_task["id"]))
+        future = db.scalar(select(Task).where(Task.id == future_task["id"]))
+        past.created_at = datetime(2026, 5, 28, tzinfo=UTC)
+        future.created_at = datetime(2026, 6, 8, tzinfo=UTC)
+        db.add_all([past, future])
+        db.commit()
+
+    response = client.get("/api/stats/tasks?period=week&anchor_date=2026-06-06")
+
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["tasks"]] == ["Past"]
+
+
+def test_stats_tasks_excludes_tasks_archived_before_selected_period(client: TestClient, cleanup_users: list[str]) -> None:
+    register(client, cleanup_users)
+    overlapping_task = create_task(client, "Overlap")
+    archived_before_period = create_task(client, "Archived before")
+
+    with SessionLocal() as db:
+        overlapping = db.scalar(select(Task).where(Task.id == overlapping_task["id"]))
+        archived = db.scalar(select(Task).where(Task.id == archived_before_period["id"]))
+        overlapping.created_at = datetime(2026, 5, 20, tzinfo=UTC)
+        archived.created_at = datetime(2026, 5, 1, tzinfo=UTC)
+        archived.archived_at = datetime(2026, 5, 31, tzinfo=UTC)
+        db.add_all([overlapping, archived])
+        db.commit()
+
+    response = client.get("/api/stats/tasks?period=week&anchor_date=2026-06-06")
+
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["tasks"]] == ["Overlap"]
 
 
 def test_stats_tasks_all_time_includes_all_user_tasks(client: TestClient, cleanup_users: list[str]) -> None:

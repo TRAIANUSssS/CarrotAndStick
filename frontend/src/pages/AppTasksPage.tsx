@@ -3,48 +3,19 @@ import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 
 import type { IconPackId } from "../api/auth";
+import { ApiError } from "../api/client";
 import type { StatsPeriod, StatsSummary } from "../api/stats";
 import { statsApi } from "../api/stats";
-import type { TaskDetail, TaskListItem, TaskStatus } from "../api/tasks";
+import type { TaskDetail, TaskHistoryItem, TaskListItem, TaskStatus } from "../api/tasks";
 import { tasksApi } from "../api/tasks";
-import { ApiError } from "../api/client";
 import { AppScaffold } from "../components/AppScaffold";
 import { Modal } from "../components/Modal";
-import carrotPunishmentIcon from "../assets/iconpacks/carrot_stick/punishment.svg";
-import carrotRewardIcon from "../assets/iconpacks/carrot_stick/reward.svg";
-import cookiePunishmentIcon from "../assets/iconpacks/cookie_whip/punishment.svg";
-import cookieRewardIcon from "../assets/iconpacks/cookie_whip/reward.svg";
+import { StatusIcon } from "../components/StatusIcon";
 import { useAuth } from "../features/auth/AuthContext";
+import { buildRecentDateRange, clampToToday, getLocalDateInputValue } from "../lib/dates";
+import { formatCalendarDate, formatCompactNumber, formatTimestamp } from "../lib/format";
 
 const HOME_PERIODS: StatsPeriod[] = ["all_time", "week", "day", "month", "year"];
-
-const ICON_PACKS: Record<IconPackId, { reward: string; punishment: string }> = {
-  cookie_whip: {
-    reward: cookieRewardIcon,
-    punishment: cookiePunishmentIcon,
-  },
-  carrot_stick: {
-    reward: carrotRewardIcon,
-    punishment: carrotPunishmentIcon,
-  },
-};
-
-function getLocalDateInputValue() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function clampToToday(value: string) {
-  const today = getLocalDateInputValue();
-  return value > today ? today : value;
-}
-
-function getNextTaskStatus(currentStatus: TaskStatus, clickedStatus: Exclude<TaskStatus, null>): TaskStatus {
-  return currentStatus === clickedStatus ? null : clickedStatus;
-}
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError && typeof error.detail === "object" && error.detail !== null) {
@@ -57,34 +28,22 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function formatCompactNumber(language: string, value: number) {
-  return new Intl.NumberFormat(language, {
-    notation: "compact",
-    maximumFractionDigits: 2,
-  }).format(value);
+function getNextTaskStatus(currentStatus: TaskStatus, clickedStatus: Exclude<TaskStatus, null>): TaskStatus {
+  return currentStatus === clickedStatus ? null : clickedStatus;
 }
 
-function formatCalendarDate(language: string, value: string) {
-  return new Intl.DateTimeFormat(language, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
-}
-
-function formatTimestamp(language: string, value: string) {
-  return new Intl.DateTimeFormat(language, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+function getTaskCreatedDate(task: Pick<TaskListItem, "created_at"> | Pick<TaskDetail, "created_at">) {
+  return task.created_at.slice(0, 10);
 }
 
 type SummaryPanelProps = {
   language: string;
+  iconPack: IconPackId;
   title: string;
   summaryLabel: string;
   periodLabel: string;
+  rewardLabel: string;
+  punishmentLabel: string;
   labels: Record<StatsPeriod, string>;
   summary: StatsSummary | null;
   periods: StatsPeriod[];
@@ -95,9 +54,12 @@ type SummaryPanelProps = {
 
 function SummaryPanel({
   language,
+  iconPack,
   title,
   summaryLabel,
   periodLabel,
+  rewardLabel,
+  punishmentLabel,
   labels,
   summary,
   periods,
@@ -106,20 +68,27 @@ function SummaryPanel({
   onSelectPeriod,
 }: SummaryPanelProps) {
   return (
-    <section className="summary-card">
-      <div className="summary-card__top">
+    <section className="summary-card summary-card--hero">
+      <p className="eyebrow">{summaryLabel}</p>
+      <div className="summary-hero">
         <div>
-          <p className="eyebrow">{summaryLabel}</p>
           <h1 className="page-title">{title}</h1>
         </div>
+
         <div className="summary-card__counts" aria-busy={isLoading}>
           <div className="summary-pill summary-pill--reward">
-            <span>+</span>
-            <strong>{formatCompactNumber(language, summary?.reward_count ?? 0)}</strong>
+            <StatusIcon iconPack={iconPack} status="reward" label={rewardLabel} />
+            <div>
+              <span>{rewardLabel}</span>
+              <strong>{formatCompactNumber(language, summary?.reward_count ?? 0)}</strong>
+            </div>
           </div>
           <div className="summary-pill summary-pill--punishment">
-            <span>-</span>
-            <strong>{formatCompactNumber(language, summary?.punishment_count ?? 0)}</strong>
+            <StatusIcon iconPack={iconPack} status="punishment" label={punishmentLabel} />
+            <div>
+              <span>{punishmentLabel}</span>
+              <strong>{formatCompactNumber(language, summary?.punishment_count ?? 0)}</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -143,12 +112,29 @@ function SummaryPanel({
   );
 }
 
+type HistoryTone = "reward" | "punishment" | "empty" | "missing";
+
+function getHistoryTone(entry: TaskHistoryItem | undefined, createdDate: string, date: string): HistoryTone {
+  if (date < createdDate) {
+    return "missing";
+  }
+  if (entry?.status === "reward") {
+    return "reward";
+  }
+  if (entry?.status === "punishment") {
+    return "punishment";
+  }
+  return "empty";
+}
+
 type TaskCardProps = {
   task: TaskListItem;
+  selectedDate: string;
   language: string;
   iconPack: IconPackId;
   pinnedLabel: string;
   historyLabel: string;
+  historyLegend: string;
   rewardLabel: string;
   punishmentLabel: string;
   onOpen: (taskId: string) => void;
@@ -157,77 +143,120 @@ type TaskCardProps = {
 
 function TaskCard({
   task,
+  selectedDate,
   language,
   iconPack,
   pinnedLabel,
   historyLabel,
+  historyLegend,
   rewardLabel,
   punishmentLabel,
   onOpen,
   onMark,
 }: TaskCardProps) {
-  const icons = ICON_PACKS[iconPack];
+  const createdDate = getTaskCreatedDate(task);
+  const historyByDate = new Map(task.history.map((entry) => [entry.date, entry]));
+  const historyDates = buildRecentDateRange(selectedDate, 7);
+  const canMarkSelectedDate = selectedDate >= createdDate;
 
   return (
     <article className="task-card">
-      <div className="task-card__header">
-        <button className="task-card__body" onClick={() => onOpen(task.id)} type="button">
-          <h3>{task.name}</h3>
-          {task.is_pinned ? <span className="task-badge">{pinnedLabel}</span> : null}
-        </button>
-        <div className="task-actions">
-          <button
-            className={clsx(
-              "mark-button",
-              task.selected_date_status === "reward" && "mark-button--active mark-button--reward",
-            )}
-            onClick={(event) => {
-              event.stopPropagation();
-              onMark(task.id, "reward");
-            }}
-            type="button"
-            aria-label={rewardLabel}
-            aria-pressed={task.selected_date_status === "reward"}
-          >
-            <img src={icons.reward} alt="" aria-hidden="true" />
-          </button>
-          <button
-            className={clsx(
-              "mark-button",
-              task.selected_date_status === "punishment" && "mark-button--active mark-button--punishment",
-            )}
-            onClick={(event) => {
-              event.stopPropagation();
-              onMark(task.id, "punishment");
-            }}
-            type="button"
-            aria-label={punishmentLabel}
-            aria-pressed={task.selected_date_status === "punishment"}
-          >
-            <img src={icons.punishment} alt="" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-
-      <button className="task-card__history" onClick={() => onOpen(task.id)} type="button" aria-label={historyLabel}>
-        <div className="history-strip">
-          {task.history.map((entry) => (
-            <div key={entry.date} className="history-day">
-              <span className="history-day__label">
-                {new Intl.DateTimeFormat(language, { day: "numeric" }).format(new Date(`${entry.date}T00:00:00`))}
-              </span>
-              <span
-                className={clsx(
-                  "history-day__dot",
-                  entry.status === "reward" && "history-day__dot--reward",
-                  entry.status === "punishment" && "history-day__dot--punishment",
-                )}
-              />
-            </div>
-          ))}
+      <button className="task-card__body" onClick={() => onOpen(task.id)} type="button">
+        <div className="task-card__title-row">
+          <div>
+            <h3>{task.name}</h3>
+            {task.is_pinned ? <span className="task-badge">{pinnedLabel}</span> : null}
+          </div>
+          <span className="task-card__date">{formatCalendarDate(language, selectedDate)}</span>
         </div>
       </button>
+
+      <button className="task-card__history task-history" onClick={() => onOpen(task.id)} type="button" aria-label={historyLabel}>
+        <span className="task-history__label">{historyLegend}</span>
+        <div className="history-strip">
+          {historyDates.map((date) => {
+            const entry = historyByDate.get(date);
+            const tone = getHistoryTone(entry, createdDate, date);
+
+            return (
+              <div key={date} className="history-day">
+                <span className="history-day__label">
+                  {new Intl.DateTimeFormat(language, { day: "numeric" }).format(new Date(`${date}T00:00:00`))}
+                </span>
+                <span className={clsx("history-token", `history-token--${tone}`)}>
+                  {tone === "reward" ? <StatusIcon iconPack={iconPack} status="reward" label={rewardLabel} /> : null}
+                  {tone === "punishment" ? (
+                    <StatusIcon iconPack={iconPack} status="punishment" label={punishmentLabel} />
+                  ) : null}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </button>
+
+      <div className="task-actions">
+        <button
+          className={clsx("mark-button", "mark-button--reward", task.selected_date_status === "reward" && "mark-button--active")}
+          onClick={(event) => {
+            event.stopPropagation();
+            onMark(task.id, "reward");
+          }}
+          type="button"
+          aria-label={rewardLabel}
+          aria-pressed={task.selected_date_status === "reward"}
+          disabled={!canMarkSelectedDate}
+        >
+          <StatusIcon iconPack={iconPack} status="reward" label={rewardLabel} />
+        </button>
+        <button
+          className={clsx(
+            "mark-button",
+            "mark-button--punishment",
+            task.selected_date_status === "punishment" && "mark-button--active",
+          )}
+          onClick={(event) => {
+            event.stopPropagation();
+            onMark(task.id, "punishment");
+          }}
+          type="button"
+          aria-label={punishmentLabel}
+          aria-pressed={task.selected_date_status === "punishment"}
+          disabled={!canMarkSelectedDate}
+        >
+          <StatusIcon iconPack={iconPack} status="punishment" label={punishmentLabel} />
+        </button>
+      </div>
     </article>
+  );
+}
+
+type StatsMiniCardProps = {
+  iconPack: IconPackId;
+  rewardLabel: string;
+  punishmentLabel: string;
+  rewardCount: number;
+  punishmentCount: number;
+};
+
+function StatsMiniCard({ iconPack, rewardLabel, punishmentLabel, rewardCount, punishmentCount }: StatsMiniCardProps) {
+  return (
+    <dl className="detail-grid detail-grid--totals">
+      <div className="detail-grid__card detail-grid__card--reward">
+        <dt>
+          <StatusIcon iconPack={iconPack} status="reward" label={rewardLabel} />
+          <span>{rewardLabel}</span>
+        </dt>
+        <dd>{rewardCount}</dd>
+      </div>
+      <div className="detail-grid__card detail-grid__card--punishment">
+        <dt>
+          <StatusIcon iconPack={iconPack} status="punishment" label={punishmentLabel} />
+          <span>{punishmentLabel}</span>
+        </dt>
+        <dd>{punishmentCount}</dd>
+      </div>
+    </dl>
   );
 }
 
@@ -322,6 +351,7 @@ function AddTaskModal(props: AddTaskModalProps) {
 type TaskDetailsModalProps = {
   task: TaskDetail | null;
   language: string;
+  iconPack: IconPackId;
   closeLabel: string;
   saveLabel: string;
   cancelLabel: string;
@@ -346,6 +376,7 @@ type TaskDetailsModalProps = {
 function TaskDetailsModal({
   task,
   language,
+  iconPack,
   closeLabel,
   saveLabel,
   cancelLabel,
@@ -388,15 +419,15 @@ function TaskDetailsModal({
               <dt>{createdAtLabel}</dt>
               <dd>{formatTimestamp(language, task.created_at)}</dd>
             </div>
-            <div>
-              <dt>{rewardTotalLabel}</dt>
-              <dd>{task.total_reward}</dd>
-            </div>
-            <div>
-              <dt>{punishmentTotalLabel}</dt>
-              <dd>{task.total_punishment}</dd>
-            </div>
           </dl>
+
+          <StatsMiniCard
+            iconPack={iconPack}
+            rewardLabel={rewardTotalLabel}
+            punishmentLabel={punishmentTotalLabel}
+            rewardCount={task.total_reward}
+            punishmentCount={task.total_punishment}
+          />
 
           <form className="modal-form" onSubmit={handleSubmit}>
             <label>
@@ -439,8 +470,7 @@ export function AppTasksPage() {
   const [selectedDate, setSelectedDate] = React.useState(getLocalDateInputValue);
   const [tasks, setTasks] = React.useState<TaskListItem[]>([]);
   const [summary, setSummary] = React.useState<StatsSummary | null>(null);
-  const [activePeriod, setActivePeriod] = React.useState<StatsPeriod>("all_time");
-  const [rotationSeed, setRotationSeed] = React.useState(0);
+  const [activePeriod, setActivePeriod] = React.useState<StatsPeriod>("week");
   const [reloadSeed, setReloadSeed] = React.useState(0);
   const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
   const [selectedTask, setSelectedTask] = React.useState<TaskDetail | null>(null);
@@ -453,7 +483,6 @@ export function AppTasksPage() {
   const [pageError, setPageError] = React.useState<string | null>(null);
   const [modalError, setModalError] = React.useState<string | null>(null);
 
-  const periodLabels = dictionary.periods;
   const iconPack = settings?.icon_pack ?? "cookie_whip";
 
   React.useEffect(() => {
@@ -494,7 +523,6 @@ export function AppTasksPage() {
       .then((response) => {
         if (isMounted) {
           setSummary(response);
-          setPageError(null);
         }
       })
       .catch((error: unknown) => {
@@ -546,17 +574,6 @@ export function AppTasksPage() {
     };
   }, [dictionary.common.genericError, selectedTaskId]);
 
-  React.useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActivePeriod((currentPeriod) => {
-        const currentIndex = HOME_PERIODS.indexOf(currentPeriod);
-        return HOME_PERIODS[(currentIndex + 1) % HOME_PERIODS.length];
-      });
-    }, 15000);
-
-    return () => window.clearInterval(timer);
-  }, [rotationSeed]);
-
   const refreshTasks = React.useCallback(() => {
     setReloadSeed((current) => current + 1);
   }, []);
@@ -565,6 +582,7 @@ export function AppTasksPage() {
     if (selectedTaskId === null) {
       return;
     }
+
     setIsLoadingTask(true);
     try {
       setSelectedTask(await tasksApi.details(selectedTaskId));
@@ -578,6 +596,7 @@ export function AppTasksPage() {
       setIsSubmitting(true);
       setModalError(null);
       setPageError(null);
+
       try {
         await action();
       } catch (error) {
@@ -590,11 +609,6 @@ export function AppTasksPage() {
     },
     [],
   );
-
-  const handleSelectPeriod = (period: StatsPeriod) => {
-    setActivePeriod(period);
-    setRotationSeed((current) => current + 1);
-  };
 
   const handleCreateTask = async (name: string) => {
     await runMutation(async () => {
@@ -664,19 +678,23 @@ export function AppTasksPage() {
 
   return (
     <AppScaffold>
-      <section className="tasks-page">
+      <section className="app-page tasks-page">
         <SummaryPanel
           language={language}
+          iconPack={iconPack}
           title={dictionary.tasksPage.pageTitle}
           summaryLabel={dictionary.tasksPage.summaryLabel}
           periodLabel={dictionary.tasksPage.periodLabel}
-          labels={periodLabels}
+          rewardLabel={dictionary.tasksPage.rewardShort}
+          punishmentLabel={dictionary.tasksPage.punishmentShort}
+          labels={dictionary.periods}
           summary={summary}
           periods={HOME_PERIODS}
           activePeriod={activePeriod}
           isLoading={isLoadingSummary}
-          onSelectPeriod={handleSelectPeriod}
+          onSelectPeriod={setActivePeriod}
         />
+
         <div className="sr-only" aria-live="polite">
           {isLoadingSummary ? dictionary.common.loading : ""}
         </div>
@@ -716,7 +734,10 @@ export function AppTasksPage() {
           {isLoadingTasks ? <div className="panel-state">{dictionary.common.loading}</div> : null}
 
           {!isLoadingTasks && tasks.length === 0 ? (
-            <div className="panel-state panel-state--empty">{dictionary.tasksPage.empty}</div>
+            <div className="panel-state panel-state--empty">
+              <strong>{dictionary.tasksPage.emptyTitle}</strong>
+              <p>{dictionary.tasksPage.emptyBody}</p>
+            </div>
           ) : null}
 
           {!isLoadingTasks && tasks.length > 0 ? (
@@ -725,10 +746,12 @@ export function AppTasksPage() {
                 <TaskCard
                   key={task.id}
                   task={task}
+                  selectedDate={selectedDate}
                   language={language}
                   iconPack={iconPack}
                   pinnedLabel={dictionary.tasksPage.pinned}
                   historyLabel={dictionary.tasksPage.historyLabel}
+                  historyLegend={dictionary.tasksPage.historyLegend}
                   rewardLabel={dictionary.tasksPage.reward}
                   punishmentLabel={dictionary.tasksPage.punishment}
                   onOpen={setSelectedTaskId}
@@ -762,13 +785,14 @@ export function AppTasksPage() {
         <TaskDetailsModal
           task={selectedTask}
           language={language}
+          iconPack={iconPack}
           closeLabel={dictionary.common.close}
           saveLabel={dictionary.common.save}
           cancelLabel={dictionary.common.cancel}
           editNameLabel={dictionary.tasksPage.editName}
           createdAtLabel={dictionary.tasksPage.createdAt}
-          rewardTotalLabel={dictionary.tasksPage.totalReward}
-          punishmentTotalLabel={dictionary.tasksPage.totalPunishment}
+          rewardTotalLabel={dictionary.tasksPage.rewardShort}
+          punishmentTotalLabel={dictionary.tasksPage.punishmentShort}
           pinLabel={dictionary.tasksPage.pin}
           unpinLabel={dictionary.tasksPage.unpin}
           archiveLabel={dictionary.tasksPage.archive}
@@ -806,3 +830,4 @@ export function AppTasksPage() {
     </AppScaffold>
   );
 }
+

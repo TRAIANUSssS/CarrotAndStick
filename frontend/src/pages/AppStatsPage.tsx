@@ -1,32 +1,15 @@
 import React from "react";
+import clsx from "clsx";
 
-import type { StatsPeriod, StatsTasks } from "../api/stats";
-import { statsApi } from "../api/stats";
 import { ApiError } from "../api/client";
+import { statsApi, type StatsPeriod, type StatsTasks } from "../api/stats";
 import { AppScaffold } from "../components/AppScaffold";
+import { StatusIcon } from "../components/StatusIcon";
 import { useAuth } from "../features/auth/AuthContext";
+import { getLocalDateInputValue, getPeriodBounds, shiftAnchorDate } from "../lib/dates";
+import { formatDateLabel, formatTimestamp } from "../lib/format";
 
 const STATS_PERIODS: StatsPeriod[] = ["day", "week", "month", "year", "all_time"];
-
-function getLocalDateInputValue() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function formatDateValue(dateValue: Date) {
-  const year = dateValue.getFullYear();
-  const month = String(dateValue.getMonth() + 1).padStart(2, "0");
-  const day = String(dateValue.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseDateValue(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError && typeof error.detail === "object" && error.detail !== null) {
@@ -39,86 +22,15 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function formatDateLabel(language: string, value: string | null) {
-  if (value === null) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(language, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
-}
-
-function formatTimestamp(language: string, value: string | null) {
-  if (value === null) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(language, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function shiftAnchorDate(anchorDate: string, period: StatsPeriod, direction: -1 | 1) {
-  const nextDate = parseDateValue(anchorDate);
-
-  if (period === "day") {
-    nextDate.setDate(nextDate.getDate() + direction);
-  } else if (period === "week") {
-    nextDate.setDate(nextDate.getDate() + direction * 7);
-  } else if (period === "month") {
-    const originalDay = nextDate.getDate();
-    nextDate.setDate(1);
-    nextDate.setMonth(nextDate.getMonth() + direction);
-    const maxDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-    nextDate.setDate(Math.min(originalDay, maxDay));
-  } else if (period === "year") {
-    const originalMonth = nextDate.getMonth();
-    const originalDay = nextDate.getDate();
-    nextDate.setDate(1);
-    nextDate.setFullYear(nextDate.getFullYear() + direction, originalMonth, 1);
-    const maxDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-    nextDate.setDate(Math.min(originalDay, maxDay));
-  }
-
-  return formatDateValue(nextDate);
-}
-
-function getPeriodEndDate(anchorDate: string, period: StatsPeriod) {
-  const periodDate = parseDateValue(anchorDate);
-
-  if (period === "all_time") {
-    return null;
-  }
-
-  if (period === "day") {
-    return anchorDate;
-  }
-
-  if (period === "week") {
-    const endDate = new Date(periodDate);
-    endDate.setDate(periodDate.getDate() + (6 - periodDate.getDay() + 7) % 7);
-    return formatDateValue(endDate);
-  }
-
-  if (period === "month") {
-    return formatDateValue(new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 0));
-  }
-
-  return formatDateValue(new Date(periodDate.getFullYear(), 11, 31));
-}
-
 export function AppStatsPage() {
-  const { dictionary, language } = useAuth();
+  const { dictionary, language, settings } = useAuth();
   const [period, setPeriod] = React.useState<StatsPeriod>("week");
   const [anchorDate, setAnchorDate] = React.useState(getLocalDateInputValue);
   const [stats, setStats] = React.useState<StatsTasks | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorText, setErrorText] = React.useState<string | null>(null);
+
+  const iconPack = settings?.icon_pack ?? "cookie_whip";
 
   React.useEffect(() => {
     let isMounted = true;
@@ -149,13 +61,13 @@ export function AppStatsPage() {
   }, [anchorDate, dictionary.common.genericError, period]);
 
   const today = getLocalDateInputValue();
+  const { endDate } = getPeriodBounds(anchorDate, period);
   const canNavigatePeriod = period !== "all_time";
-  const currentPeriodEnd = getPeriodEndDate(anchorDate, period);
-  const canNavigateForward = canNavigatePeriod && currentPeriodEnd !== null && currentPeriodEnd < today;
+  const canNavigateForward = canNavigatePeriod && endDate !== null && endDate < today;
 
   return (
     <AppScaffold>
-      <section className="tasks-page">
+      <section className="app-page tasks-page">
         <section className="section-block">
           <header className="section-block__header">
             <div>
@@ -168,7 +80,7 @@ export function AppStatsPage() {
             {STATS_PERIODS.map((item) => (
               <button
                 key={item}
-                className={`period-tabs__item${item === period ? " period-tabs__item--active" : ""}`}
+                className={clsx("period-tabs__item", item === period && "period-tabs__item--active")}
                 onClick={() => setPeriod(item)}
                 type="button"
                 role="tab"
@@ -216,17 +128,26 @@ export function AppStatsPage() {
             <>
               <div className="stats-summary-grid">
                 <div className="detail-grid__card detail-grid__card--reward">
-                  <span>{dictionary.statsPage.totalReward}</span>
+                  <div className="stats-card__label">
+                    <StatusIcon iconPack={iconPack} status="reward" label={dictionary.tasksPage.rewardShort} />
+                    <span>{dictionary.tasksPage.rewardShort}</span>
+                  </div>
                   <strong>{stats.total_reward}</strong>
                 </div>
                 <div className="detail-grid__card detail-grid__card--punishment">
-                  <span>{dictionary.statsPage.totalPunishment}</span>
+                  <div className="stats-card__label">
+                    <StatusIcon iconPack={iconPack} status="punishment" label={dictionary.tasksPage.punishmentShort} />
+                    <span>{dictionary.tasksPage.punishmentShort}</span>
+                  </div>
                   <strong>{stats.total_punishment}</strong>
                 </div>
               </div>
 
               {stats.tasks.length === 0 ? (
-                <div className="panel-state panel-state--empty">{dictionary.statsPage.empty}</div>
+                <div className="panel-state panel-state--empty">
+                  <strong>{dictionary.statsPage.emptyTitle}</strong>
+                  <p>{dictionary.statsPage.emptyBody}</p>
+                </div>
               ) : (
                 <div className="stats-task-list">
                   {stats.tasks.map((task) => (
@@ -234,12 +155,24 @@ export function AppStatsPage() {
                       <div className="stats-task-row__title">
                         <strong>{task.name}</strong>
                         {task.archived_at ? (
-                          <span>{dictionary.statsPage.archivedAt}: {formatTimestamp(language, task.archived_at)}</span>
+                          <span>
+                            {dictionary.statsPage.archivedAt}: {formatTimestamp(language, task.archived_at)}
+                          </span>
                         ) : null}
                       </div>
                       <div className="stats-task-row__values">
-                        <span className="stats-value stats-value--reward">+{task.reward_count}</span>
-                        <span className="stats-value stats-value--punishment">-{task.punishment_count}</span>
+                        <span className="stats-value stats-value--reward">
+                          <StatusIcon iconPack={iconPack} status="reward" label={dictionary.tasksPage.rewardShort} />
+                          <strong>{task.reward_count}</strong>
+                        </span>
+                        <span className="stats-value stats-value--punishment">
+                          <StatusIcon
+                            iconPack={iconPack}
+                            status="punishment"
+                            label={dictionary.tasksPage.punishmentShort}
+                          />
+                          <strong>{task.punishment_count}</strong>
+                        </span>
                       </div>
                     </article>
                   ))}
@@ -252,3 +185,4 @@ export function AppStatsPage() {
     </AppScaffold>
   );
 }
+

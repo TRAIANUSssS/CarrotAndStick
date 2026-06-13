@@ -72,7 +72,10 @@ def get_stats_tasks(db: Session, user: User, period: StatsPeriod, anchor_date: d
     )
 
     if period != "all_time":
-        statement = statement.where(func.date(Task.created_at) <= start_date)
+        statement = statement.where(func.date(Task.created_at) <= end_date)
+        statement = statement.where(
+            Task.archived_at.is_(None) | (func.date(Task.archived_at) >= start_date),
+        )
 
     rows = db.execute(statement).all()
 
