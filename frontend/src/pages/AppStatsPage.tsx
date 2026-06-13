@@ -127,6 +127,9 @@ export function AppStatsPage() {
                 className={`period-tabs__item${item === period ? " period-tabs__item--active" : ""}`}
                 onClick={() => setPeriod(item)}
                 type="button"
+                role="tab"
+                aria-selected={item === period}
+                aria-pressed={item === period}
               >
                 {dictionary.periods[item]}
               </button>
@@ -158,7 +161,11 @@ export function AppStatsPage() {
             </button>
           </div>
 
-          {errorText ? <p className="form-error">{errorText}</p> : null}
+          <div className="sr-only" aria-live="polite">
+            {isLoading ? dictionary.common.loading : ""}
+          </div>
+
+          {errorText ? <p className="form-error" role="alert">{errorText}</p> : null}
           {isLoading ? <div className="panel-state">{dictionary.common.loading}</div> : null}
 
           {!isLoading && stats ? (

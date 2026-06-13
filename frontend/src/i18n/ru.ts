@@ -42,6 +42,7 @@ export const ru = {
   common: {
     loading: "Загрузка…",
     cancel: "Отмена",
+    confirm: "Подтвердить",
     save: "Сохранить",
     close: "Закрыть",
     back: "Назад",
@@ -67,6 +68,8 @@ export const ru = {
     pin: "Закрепить",
     unpin: "Открепить",
     archive: "Архивировать",
+    archiveConfirmTitle: "Архивировать задачу",
+    archiveConfirmText: "Задача исчезнет из активного списка, но останется в статистике и архиве.",
     pinned: "Закреплена",
     historyLabel: "История задачи",
     summaryLabel: "Сводка",

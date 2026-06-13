@@ -126,6 +126,9 @@ function SummaryPanel({
             className={clsx("period-tabs__item", period === activePeriod && "period-tabs__item--active")}
             onClick={() => onSelectPeriod(period)}
             type="button"
+            role="tab"
+            aria-selected={period === activePeriod}
+            aria-pressed={period === activePeriod}
           >
             {labels[period]}
           </button>
@@ -179,6 +182,7 @@ function TaskCard({
             }}
             type="button"
             aria-label={rewardLabel}
+            aria-pressed={task.selected_date_status === "reward"}
           >
             <img src={icons.reward} alt="" aria-hidden="true" />
           </button>
@@ -193,6 +197,7 @@ function TaskCard({
             }}
             type="button"
             aria-label={punishmentLabel}
+            aria-pressed={task.selected_date_status === "punishment"}
           >
             <img src={icons.punishment} alt="" aria-hidden="true" />
           </button>
@@ -218,6 +223,44 @@ function TaskCard({
         </div>
       </button>
     </article>
+  );
+}
+
+type ArchiveConfirmModalProps = {
+  title: string;
+  text: string;
+  closeLabel: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+};
+
+function ArchiveConfirmModal({
+  title,
+  text,
+  closeLabel,
+  confirmLabel,
+  cancelLabel,
+  isSubmitting,
+  onClose,
+  onConfirm,
+}: ArchiveConfirmModalProps) {
+  return (
+    <Modal title={title} closeLabel={closeLabel} onClose={onClose}>
+      <div className="modal-stack">
+        <p className="modal-state">{text}</p>
+        <div className="modal-actions">
+          <button className="secondary-button" onClick={onClose} type="button">
+            {cancelLabel}
+          </button>
+          <button className="danger-button" disabled={isSubmitting} onClick={() => void onConfirm()} type="button">
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -401,6 +444,7 @@ export function AppTasksPage() {
   const [isLoadingTask, setIsLoadingTask] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = React.useState(false);
   const [pageError, setPageError] = React.useState<string | null>(null);
   const [modalError, setModalError] = React.useState<string | null>(null);
 
@@ -604,6 +648,7 @@ export function AppTasksPage() {
 
     await runMutation(async () => {
       await tasksApi.archive(selectedTaskId);
+      setIsArchiveConfirmOpen(false);
       setSelectedTaskId(null);
       setSelectedTask(null);
       refreshTasks();
@@ -625,6 +670,9 @@ export function AppTasksPage() {
           isLoading={isLoadingSummary}
           onSelectPeriod={handleSelectPeriod}
         />
+        <div className="sr-only" aria-live="polite">
+          {isLoadingSummary ? dictionary.common.loading : ""}
+        </div>
 
         <section className="toolbar-card">
           <div className="toolbar-card__group">
@@ -635,6 +683,7 @@ export function AppTasksPage() {
                 type="date"
                 value={selectedDate}
                 onChange={(event) => setSelectedDate(event.target.value)}
+                aria-label={dictionary.tasksPage.selectedDate}
               />
             </label>
             <button className="secondary-button" onClick={() => navigate("/app/tasks/archived")} type="button">
@@ -646,9 +695,9 @@ export function AppTasksPage() {
           </button>
         </section>
 
-        {pageError ? <p className="form-error">{pageError}</p> : null}
+        {pageError ? <p className="form-error" role="alert">{pageError}</p> : null}
 
-        <section className="section-block">
+        <section className="section-block" aria-busy={isLoadingTasks}>
           <header className="section-block__header">
             <div>
               <p className="eyebrow">{dictionary.tasksPage.activeListLabel}</p>
@@ -723,11 +772,27 @@ export function AppTasksPage() {
           onClose={() => {
             setSelectedTaskId(null);
             setSelectedTask(null);
+            setIsArchiveConfirmOpen(false);
             setModalError(null);
           }}
           onSaveName={handleSaveTaskName}
           onTogglePin={handleTogglePin}
-          onArchive={handleArchive}
+          onArchive={async () => {
+            setIsArchiveConfirmOpen(true);
+          }}
+        />
+      ) : null}
+
+      {isArchiveConfirmOpen ? (
+        <ArchiveConfirmModal
+          title={dictionary.tasksPage.archiveConfirmTitle}
+          text={dictionary.tasksPage.archiveConfirmText}
+          closeLabel={dictionary.common.close}
+          confirmLabel={dictionary.common.confirm}
+          cancelLabel={dictionary.common.cancel}
+          isSubmitting={isSubmitting}
+          onClose={() => setIsArchiveConfirmOpen(false)}
+          onConfirm={handleArchive}
         />
       ) : null}
     </AppScaffold>

@@ -96,7 +96,10 @@ export function ArchivedTasksPage() {
             </button>
           </header>
 
-          {errorText ? <p className="form-error">{errorText}</p> : null}
+          <div className="sr-only" aria-live="polite">
+            {isLoading || isLoadingDetails ? dictionary.common.loading : ""}
+          </div>
+          {errorText ? <p className="form-error" role="alert">{errorText}</p> : null}
           {isLoading ? <div className="panel-state">{dictionary.common.loading}</div> : null}
           {!isLoading && tasks.length === 0 ? (
             <div className="panel-state panel-state--empty">{dictionary.archivedPage.empty}</div>

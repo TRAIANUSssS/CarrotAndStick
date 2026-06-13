@@ -42,6 +42,7 @@ export const en = {
   common: {
     loading: "Loading…",
     cancel: "Cancel",
+    confirm: "Confirm",
     save: "Save",
     close: "Close",
     back: "Back",
@@ -67,6 +68,8 @@ export const en = {
     pin: "Pin",
     unpin: "Unpin",
     archive: "Archive",
+    archiveConfirmTitle: "Archive task",
+    archiveConfirmText: "This task will disappear from the active list but stay in stats and archive.",
     pinned: "Pinned",
     historyLabel: "Task history",
     summaryLabel: "Summary",

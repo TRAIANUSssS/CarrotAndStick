@@ -20,7 +20,7 @@ export function Modal({ title, closeLabel, onClose, children }: ModalProps) {
         <header className="modal-card__header">
           <h2 id="modal-title">{title}</h2>
           <button className="icon-button" onClick={onClose} type="button" aria-label={closeLabel}>
-            ×
+            x
           </button>
         </header>
         {children}

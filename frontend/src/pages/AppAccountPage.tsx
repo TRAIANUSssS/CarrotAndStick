@@ -127,6 +127,7 @@ export function AppAccountPage() {
                     className={`icon-pack-card${iconPack === option ? " icon-pack-card--active" : ""}`}
                     onClick={() => setIconPack(option)}
                     type="button"
+                    aria-pressed={iconPack === option}
                   >
                     <strong>
                       {option === "cookie_whip"
