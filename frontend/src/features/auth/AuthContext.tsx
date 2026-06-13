@@ -1,6 +1,14 @@
 import React from "react";
 
-import type { AuthResponse, Language, LoginPayload, RegisterPayload, User, UserSettings } from "../../api/auth";
+import type {
+  AuthResponse,
+  Language,
+  LoginPayload,
+  RegisterPayload,
+  UpdateSettingsPayload,
+  User,
+  UserSettings,
+} from "../../api/auth";
 import { authApi } from "../../api/auth";
 import { ApiError } from "../../api/client";
 import { getDictionary } from "../../i18n";
@@ -15,6 +23,7 @@ type AuthState = {
   register: (payload: RegisterPayload) => Promise<void>;
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
+  updateSettings: (payload: UpdateSettingsPayload) => Promise<void>;
 };
 
 const AuthContext = React.createContext<AuthState | null>(null);
@@ -80,6 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSettings(null);
   }, []);
 
+  const updateSettings = React.useCallback(async (payload: UpdateSettingsPayload) => {
+    const response = await authApi.updateSettings(payload);
+    const nextState = applyAuthResponse(response);
+    setUser(nextState.user);
+    setSettings(nextState.settings);
+  }, []);
+
   const language = settings?.language ?? fallbackLanguage;
   const dictionary = getDictionary(language);
 
@@ -94,8 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       login,
       logout,
+      updateSettings,
     }),
-    [dictionary, isLoading, language, login, logout, register, settings, user],
+    [dictionary, isLoading, language, login, logout, register, settings, updateSettings, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -110,4 +127,3 @@ export function useAuth() {
 
   return context;
 }
-

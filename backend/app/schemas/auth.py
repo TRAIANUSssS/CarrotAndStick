@@ -3,6 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 VALID_LANGUAGES = {"ru", "en"}
+VALID_ICON_PACKS = {"cookie_whip", "carrot_stick"}
 DEFAULT_ICON_PACK_BY_LANGUAGE = {
     "ru": "cookie_whip",
     "en": "carrot_stick",
@@ -63,6 +64,23 @@ class LoginRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str = Field(min_length=1, max_length=256)
     new_password: str = Field(min_length=6, max_length=256)
 
+
+class UpdateSettingsRequest(BaseModel):
+    language: str
+    icon_pack: str
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        if value not in VALID_LANGUAGES:
+            raise ValueError("Unsupported language")
+        return value
+
+    @field_validator("icon_pack")
+    @classmethod
+    def validate_icon_pack(cls, value: str) -> str:
+        if value not in VALID_ICON_PACKS:
+            raise ValueError("Unsupported icon pack")
+        return value

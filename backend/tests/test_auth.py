@@ -116,7 +116,7 @@ def test_login_rejects_wrong_password(client: TestClient, cleanup_users: list[st
     assert response.status_code == 401
 
 
-def test_change_password_requires_old_password_and_updates_password(
+def test_change_password_updates_password_without_old_password(
     client: TestClient,
     cleanup_users: list[str],
 ) -> None:
@@ -126,15 +126,9 @@ def test_change_password_requires_old_password_and_updates_password(
     register_response = client.post("/api/auth/register", json=register_payload(login, "old-password"))
     assert register_response.status_code == 201
 
-    wrong_old_response = client.post(
-        "/api/auth/change-password",
-        json={"old_password": "wrong-password", "new_password": "new-password"},
-    )
-    assert wrong_old_response.status_code == 400
-
     change_response = client.post(
         "/api/auth/change-password",
-        json={"old_password": "old-password", "new_password": "new-password"},
+        json={"new_password": "new-password"},
     )
     assert change_response.status_code == 204
 
@@ -153,3 +147,49 @@ def test_change_password_requires_old_password_and_updates_password(
     )
     assert new_login_response.status_code == 200
 
+
+def test_update_settings_updates_language_and_icon_pack(
+    client: TestClient,
+    cleanup_users: list[str],
+) -> None:
+    login = unique_login()
+    cleanup_users.append(login)
+
+    register_response = client.post("/api/auth/register", json=register_payload(login, language="ru"))
+    assert register_response.status_code == 201
+
+    update_response = client.put(
+        "/api/auth/settings",
+        json={"language": "en", "icon_pack": "cookie_whip"},
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["settings"] == {
+        "language": "en",
+        "icon_pack": "cookie_whip",
+    }
+
+    me_response = client.get("/api/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.json()["settings"] == {
+        "language": "en",
+        "icon_pack": "cookie_whip",
+    }
+
+
+def test_update_settings_rejects_invalid_icon_pack(
+    client: TestClient,
+    cleanup_users: list[str],
+) -> None:
+    login = unique_login()
+    cleanup_users.append(login)
+
+    register_response = client.post("/api/auth/register", json=register_payload(login, language="ru"))
+    assert register_response.status_code == 201
+
+    update_response = client.put(
+        "/api/auth/settings",
+        json={"language": "ru", "icon_pack": "invalid_pack"},
+    )
+
+    assert update_response.status_code == 422

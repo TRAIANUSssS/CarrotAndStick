@@ -110,11 +110,25 @@ def test_stats_summary_requires_auth(client: TestClient) -> None:
 def test_stats_summary_is_scoped_to_current_user(client: TestClient, cleanup_users: list[str]) -> None:
     owner_login = register(client, cleanup_users, "owner_stats")
     owner_task = create_task(client, "Owner task")
+
+    with SessionLocal() as db:
+        owner_record = db.scalar(select(Task).where(Task.id == owner_task["id"]))
+        owner_record.created_at = datetime(2026, 6, 1, tzinfo=UTC)
+        db.add(owner_record)
+        db.commit()
+
     put_mark(client, owner_task["id"], date(2026, 6, 6), "reward")
     client.post("/api/auth/logout")
 
     register(client, cleanup_users, "intruder_stats")
     intruder_task = create_task(client, "Intruder task")
+
+    with SessionLocal() as db:
+        intruder_record = db.scalar(select(Task).where(Task.id == intruder_task["id"]))
+        intruder_record.created_at = datetime(2026, 6, 1, tzinfo=UTC)
+        db.add(intruder_record)
+        db.commit()
+
     put_mark(client, intruder_task["id"], date(2026, 6, 6), "punishment")
 
     response = client.get("/api/stats/summary?period=day&anchor_date=2026-06-06")

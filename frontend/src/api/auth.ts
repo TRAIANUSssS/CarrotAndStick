@@ -30,8 +30,12 @@ export type LoginPayload = {
 };
 
 export type ChangePasswordPayload = {
-  old_password: string;
   new_password: string;
+};
+
+export type UpdateSettingsPayload = {
+  language: Language;
+  icon_pack: IconPackId;
 };
 
 export const authApi = {
@@ -39,7 +43,7 @@ export const authApi = {
   login: (payload: LoginPayload) => apiClient.post<AuthResponse>("/api/auth/login", payload),
   logout: () => apiClient.post<void>("/api/auth/logout"),
   me: () => apiClient.get<AuthResponse>("/api/auth/me"),
+  updateSettings: (payload: UpdateSettingsPayload) => apiClient.put<AuthResponse>("/api/auth/settings", payload),
   changePassword: (payload: ChangePasswordPayload) =>
     apiClient.post<void>("/api/auth/change-password", payload),
 };
-

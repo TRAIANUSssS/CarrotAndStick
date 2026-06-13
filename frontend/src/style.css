@@ -162,6 +162,7 @@ img {
 .auth-form input,
 .auth-form select,
 .modal-form input,
+.modal-form select,
 .date-input {
   width: 100%;
   min-height: 48px;
@@ -176,6 +177,7 @@ img {
 .auth-form input:focus,
 .auth-form select:focus,
 .modal-form input:focus,
+.modal-form select:focus,
 .date-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(138, 75, 37, 0.15);
@@ -668,6 +670,47 @@ img {
   color: var(--text);
   font-size: 16px;
   font-weight: 700;
+}
+
+.icon-pack-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.icon-pack-card {
+  width: 100%;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--bg-soft);
+  text-align: left;
+}
+
+.icon-pack-card strong {
+  font-size: 15px;
+}
+
+.icon-pack-card span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.icon-pack-card--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(138, 75, 37, 0.12);
+}
+
+.icon-pack-card__preview {
+  display: flex;
+  gap: 10px;
+}
+
+.icon-pack-card__preview img {
+  width: 28px;
+  height: 28px;
 }
 
 .stats-nav {
