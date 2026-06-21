@@ -1,90 +1,237 @@
-[17.06.2026 19:04] Kolay: # description for design
+# Frontend Design Guide
 
-## Tasks
+Status: Draft
 
-### HeroWitget
- - состоит из двух частей. С одной строны иконка пряника и кол-во, с Другой Иконка кнута и кол-во кнутов
- - Нужен для отображения результата пользхователя за проделаные задачи
- - Состояние статичное. При изменнении периода дат меняется кол-во полученых печений и кнутов
- - приорит самый наивысший
- - частота использования 10\10
+This document explains how to work with the UI Bible in `docs/ui`.
 
-### Временной отрезок
- - 5 отрезков в порядке "День", "Неделя", Месяц", "Год", "Все время". Пользователь может выбрать любой из этих интервалов и в HeroWitget изменятся значения полученных штук
- - Состояние динамическое. Человек как сам может помтавить любой из этих промежутков, так и каждый 15 секунд будет автоматически смещаться вправо. При достижении "Все время" смещается к "День" (Если человек выбрал фильтр то смещение на другой фильтр будет только спустя 30 сек)
- - приоритет средний 
- - частота использования 5\10
+It is not a component specification. Component and screen details live in the UI Bible files.
 
-### Выбор дня
- - Проект подразумевает, что можно проставлять исполнениезадач на прошедшие дни. Этот элемент существует как раз для выбора дня. По нажатию на него выходит календарь в котором можно выбрать день. Элемент должен занимать 3\5 ширины экрана. Слева квадратная иконка календарика, правее нее идут 2 элемента друг над другом Дата и день недели. Дата - жирным шрифтом и более выделяющаяся по сравнению с днум недели. День недели более мелкий шрифт и серый. Справа "галочка" вправо, "показываюая" что можно открыть эелемент
- - Состояние статичное
- - приоритет низкий 
- - частота использования 1\10
+## Purpose
 
-### Кнопка постановки задачи
- - Кнопка по нажатию на которую будет открываться окно с созданием задачи. Находится справа от "Выбор дня" и занимает 2\5 ширины экрана. Имеет надпись "+ Задача"
- - Статичная
- - приоритет высоки
- - частота 8\10
+The UI Bible is the source of truth for the frontend interface.
 
-### Заголовок "Задачи"
- - Обычный заголовок черного цвета, сделанный чтобы выделить блок задач
- - статичный
- - приорит низкий
- - частота 1\10
+Use this file as the entry point before changing any UI code. It defines:
 
-### Блок "Закрепленные задачи"
- - создан с целью группировки закрепленных задач. В нем находятся только закрепленные задачи. В хедере Слева сверху есть иконка пина(неактивная), затем идет текст "Закрепленные". В хедере Сверху справа иконка отраженной по вертикали галочки (стрелоска вверх\вниз), - если вверх, закрепленные задачи видны, если вниз то не видны. Сам элемент хранит в себе карточки закрепленных задач
- - Ститична при бездействии, при нажатии на кнопку "галочку", сворачивается, разворачивается
- - приоритет высокий
- - частота использования 10\10
+- how to read the UI Bible;
+- which files are authoritative;
+- what is allowed during implementation;
+- what has already been decided for the UI migration;
+- the planned order of work.
 
-### Блок "Остальные задачи"
- - создан с целью группировки НЕ закрепленных задач. В нем находятся только НЕ закрепленные задачи. В хедере Слева сверху есть иконка карандаша и листа бумаги, затем идет текст "Остальные". В хедере Сверху справа иконка отраженной по вертикали галочки (стрелоска вверх\вниз), - если вверх, закрепленные задачи видны, если вниз то не видны. Сам элемент хранит в себе карточки НЕ закрепленных задач
- - Ститична при бездействии, при нажатии на кнопку "галочку", сворачивается, разворачивается
- - приоритет самый высокий
- - частота использования 10\10
+## Source Of Truth
 
-### Карточка задачи
- - Состоит из названия, истории, и блока с установкой статуса. Название слева сверху, выделено жирным. Под ним, во втором ряду идут 7 кругов, похожих на "о". Каждый круг отражает статус задачи в прошедшие дни. Круг может быть зеленым, красным, пустым. Пусто - в конкретный день не было отмечено выполнение\не выполнение задачи. Зеленый - задача выполнена, красный - нет. Карточка закрепленной и не закрепленной задачи визуальне но не отличаются
- - Статична
- - приоритет высочайший
- - частота 10\10
-[17.06.2026 19:04] Kolay: ### Блока с установкой статуса
- - Он состоит из 2х одинаковых элементов(только разные иконки, у первой пряник, у второй кнут) - квадратные кнопочки для простановки статуса. При нажатии на первую, с пряником будет подсвечиваться зеленым, при нажатии на вторую, с кнутом, будет подсвечиваться красным. При повторном нажитии на одну и ту же кнопку возвращает ее в исходный статус - задача не выполнена и не провалена, задача не выполнялась впринципе
- - Кнопки меняют цвет в зависимости от того какая из них активна и активна ли в принципе
- - приоритет высочайший
- - частота 10 \ 10 
+The authoritative UI files are in `docs/ui`.
 
-### Подсказка
- - Расположена в самом низу, до элемента навигации. Не очень большой, при большом кол-ве задач будет виден только если отмотать до самого конца. В подсказке текст "Пусто - задача не учтена в статистике"
- - статична
- - приорит низкий
- - 1\10
+Read them in this order:
 
-### Навигация
- - Сожержит в себе 3 иконки без названий "Задачи", "Статистика", "Аккаункт". Служит для перехода между основынми страницами
- - Меняет цвет в зависимости от того находимся ли мы на конкретной вкладке или нет
- - приорит средний 
- - частота 7\10
+1. `21_CodexRules.md` - rules for AI and human implementation decisions.
+2. `20_DesignTokens.md` - visual foundation: colors, typography, spacing, radius, shadows, dimensions.
+3. `18_MotionSystem.md` - allowed motion and animation behavior.
+4. `19_Accessibility.md` - accessibility requirements.
+5. Screen and component specs:
+   - `01_HeroStats.md`
+   - `02_TaskRow.md`
+   - `03_TaskHistory.md`
+   - `04_StatusActionGroup.md`
+   - `05_TaskGroup.md`
+   - `06_BottomNavigation.md`
+   - `07_TasksScreen.md`
+   - `08_StatsSummary.md`
+   - `09_StatsHeatmap.md`
+   - `10_TopTasks.md`
+   - `11_StatsScreen.md`
+   - `12_TaskModal.md`
+   - `13_AccountScreen.md`
+   - `14_ArchiveScreen.md`
+   - `15_LoginScreen.md`
+   - `16_RegisterScreen.md`
+   - `17_Modals.md`
 
+If documents conflict, follow `21_CodexRules.md`. If a visual value conflicts with `20_DesignTokens.md`, follow `20_DesignTokens.md`.
 
-## Stats
+## Migration Scope
 
-## Account
+All screens must follow the new UI Bible:
 
-## Archive
+- Tasks
+- Stats
+- Account
+- Archive
+- Task modal
+- Login
+- Register
+- Modals and bottom sheets
+- Navigation
+- Settings flows: language, icons, password, logout
 
-## TaskModal
+The current icon packs remain part of the product:
 
-## Login
+- `cookie_whip`
+- `carrot_stick`
 
-## Register
+Do not replace these icons unless a future task explicitly requests it.
 
-## Language Change
+## Component Structure Rule
 
-## Icons Change
+The main goal of the current UI migration is visual and behavioral compliance with the UI Bible.
 
-## Password Change
+Component extraction is allowed when it helps implement the UI Bible without changing user-facing behavior.
 
-## Log out
+Prefer extracting components that:
+
+- are explicitly defined in the UI Bible;
+- are used more than once;
+- are expected to be reused soon;
+- reduce duplication without changing screen behavior.
+
+Priority components:
+
+- `HeroStats`
+- `TaskRow` / `TaskCard`
+- `TaskGroup`
+- `StatusActionGroup`
+- `TaskHistory`
+- `BottomNavigation`
+- `StatsSummary`
+- shared modal / bottom sheet primitives
+
+Do not perform large refactors only to make the structure look perfect. Refactor when it directly supports the current migration.
+
+## Hierarchy Rule
+
+Technical refactoring is allowed if it does not change:
+
+- visible behavior;
+- block order;
+- intended screen hierarchy from the UI Bible;
+- critical DOM semantics;
+- user experience.
+
+The phrase "do not modify component hierarchy" means:
+
+- do not change the product or visual hierarchy defined by the UI Bible;
+- do not move major blocks such as `HeroStats`, period controls, task groups, modals, or `BottomNavigation` unless the UI Bible requires it;
+- do not replace existing patterns with new visual or interaction patterns without approval.
+
+It is acceptable to move local JSX into separate files if the resulting UI and UX stay the same.
+
+## Implementation Rules
+
+Before implementing UI changes:
+
+1. Read the relevant UI Bible files.
+2. Check whether an existing component already matches the needed pattern.
+3. Reuse first, extend second, compose third, create new components last.
+4. Use only tokens from `20_DesignTokens.md`.
+5. Use motion only from `18_MotionSystem.md`.
+6. Validate accessibility against `19_Accessibility.md`.
+7. Preserve MVP simplicity.
+
+Do not introduce:
+
+- new colors;
+- new spacing values;
+- new radius values;
+- new shadows;
+- new typography systems;
+- new navigation patterns;
+- new product behavior;
+- decorative gradients or visual effects outside the UI Bible.
+
+## Current Assessment
+
+The current frontend is not a full rewrite candidate.
+
+The React structure already contains many required concepts:
+
+- mobile app shell;
+- bottom navigation;
+- task cards;
+- pinned and regular task groups;
+- stats screen;
+- account screen;
+- archive screen;
+- auth screens;
+- modals.
+
+The main mismatch is visual system drift:
+
+- old beige/brown palette;
+- gradients used as accents;
+- font family outside tokens;
+- inconsistent spacing;
+- inconsistent radii;
+- oversized shadows;
+- page-local UI components that should become reusable when practical.
+
+Expected difficulty: medium.
+
+Most work should be CSS/token alignment and targeted component extraction, not backend or product logic changes.
+
+## Planned Work
+
+### Phase 1: Documentation Alignment
+
+- Replace the old `docs/fronent_design.md` content with this UI Bible guide.
+- Keep implementation decisions explicit.
+- Use this file as the entry point for future UI work.
+
+### Phase 2: UI Bible Audit
+
+- Read all files in `docs/ui`.
+- Map each UI Bible component to current frontend code.
+- Identify missing, partial, and conflicting implementations.
+- Produce a short migration checklist before code changes.
+
+### Phase 3: Token Foundation
+
+- Replace current CSS variables with UI Bible tokens.
+- Remove old visual system values.
+- Align app background, surfaces, text colors, borders, radius, shadows, buttons, inputs, and navigation.
+- Keep behavior unchanged.
+
+### Phase 4: Core Components
+
+- Align or extract the highest-priority reusable components:
+  - `BottomNavigation`
+  - `HeroStats`
+  - `TaskCard` / `TaskRow`
+  - `TaskHistory`
+  - `StatusActionGroup`
+  - `TaskGroup`
+
+Extraction should happen only where it reduces duplication or makes UI Bible compliance easier.
+
+### Phase 5: Main Screens
+
+- Bring Tasks screen into UI Bible compliance.
+- Bring Stats screen into UI Bible compliance.
+- Bring Account screen into UI Bible compliance.
+- Bring Archive screen into UI Bible compliance.
+
+Preserve screen purpose, navigation, and product behavior.
+
+### Phase 6: Auth And Modal Surfaces
+
+- Bring Login and Register screens into UI Bible compliance.
+- Align Task modal and shared modal behavior.
+- Align bottom sheet/modal surfaces with tokens and accessibility rules.
+
+### Phase 7: Verification
+
+- Run frontend checks.
+- Manually verify mobile-first layouts.
+- Check iPhone 15 and iPhone 13 mini sized viewports.
+- Check desktop mobile shell behavior.
+- Check keyboard navigation, focus states, labels, and touch target sizes.
+
+## Open Questions
+
+No blocking questions are currently open.
+
+Previously clarified decisions:
+
+- All screens must follow the new UI.
+- Component structure should move toward UI Bible components, but without unnecessary refactoring.
+- Existing icon packs stay.
+- Technical component extraction is allowed if it does not change visible behavior or the UI Bible hierarchy.
