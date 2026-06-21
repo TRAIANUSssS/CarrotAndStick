@@ -183,6 +183,10 @@ Most work should be CSS/token alignment and targeted component extraction, not b
 - Identify missing, partial, and conflicting implementations.
 - Produce a short migration checklist before code changes.
 
+Output:
+
+- `docs/ui_migration_audit.md`
+
 ### Phase 3: Token Foundation
 
 - Replace current CSS variables with UI Bible tokens.
