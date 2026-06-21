@@ -74,6 +74,9 @@ export const ru = {
     archiveConfirmTitle: "Архивировать задачу",
     archiveConfirmText: "Задача исчезнет из активного списка, но останется в статистике и архиве.",
     pinned: "Закреплена",
+    pinnedGroup: "Закреплённые",
+    otherGroup: "Остальные",
+    emptyMark: "Пусто",
     historyLabel: "История задачи",
     historyLegend: "Последние 7 дней",
     summaryLabel: "Сводка",
@@ -126,4 +129,3 @@ export const ru = {
     },
   },
 };
-

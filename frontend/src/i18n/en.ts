@@ -74,6 +74,9 @@ export const en = {
     archiveConfirmTitle: "Archive task",
     archiveConfirmText: "This task will leave the active list but remain in stats and the archive.",
     pinned: "Pinned",
+    pinnedGroup: "Pinned tasks",
+    otherGroup: "Other tasks",
+    emptyMark: "No mark",
     historyLabel: "Task history",
     historyLegend: "Last 7 days",
     summaryLabel: "Scoreboard",
@@ -126,4 +129,3 @@ export const en = {
     },
   },
 };
-
