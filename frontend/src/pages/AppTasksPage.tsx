@@ -8,9 +8,9 @@ import { statsApi } from "../api/stats";
 import type { TaskDetail, TaskListItem, TaskStatus } from "../api/tasks";
 import { tasksApi } from "../api/tasks";
 import { AppScaffold } from "../components/AppScaffold";
-import { Modal } from "../components/Modal";
+import { BottomSheet } from "../components/BottomSheet";
 import { StatusIcon } from "../components/StatusIcon";
-import { HeroStats, PeriodTabs, TaskGroup, TaskRow } from "../components/TasksCore";
+import { HeroStats, PeriodTabs, TaskGroup, TaskHistory, TaskRow } from "../components/TasksCore";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../features/auth/AuthContext";
 import { clampToToday, getLocalDateInputValue } from "../lib/dates";
@@ -116,91 +116,64 @@ function StatsMiniCard({ iconPack, rewardLabel, punishmentLabel, rewardCount, pu
   );
 }
 
-type ArchiveConfirmModalProps = {
-  title: string;
-  text: string;
-  closeLabel: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  isSubmitting: boolean;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-};
-
-function ArchiveConfirmModal({
-  title,
-  text,
-  closeLabel,
-  confirmLabel,
-  cancelLabel,
-  isSubmitting,
-  onClose,
-  onConfirm,
-}: ArchiveConfirmModalProps) {
-  return (
-    <Modal title={title} closeLabel={closeLabel} onClose={onClose}>
-      <div className="modal-stack">
-        <p className="modal-state">{text}</p>
-        <div className="modal-actions">
-          <button className="secondary-button" onClick={onClose} type="button">
-            {cancelLabel}
-          </button>
-          <button className="danger-button" disabled={isSubmitting} onClick={() => void onConfirm()} type="button">
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 type AddTaskModalProps = {
   title: string;
   closeLabel: string;
   nameLabel: string;
+  pinLabel: string;
   placeholder: string;
-  saveLabel: string;
-  cancelLabel: string;
+  createLabel: string;
   errorText: string | null;
   isSubmitting: boolean;
   onClose: () => void;
-  onSubmit: (name: string) => Promise<void>;
+  onSubmit: (name: string, shouldPin: boolean) => Promise<void>;
 };
 
 function AddTaskModal(props: AddTaskModalProps) {
   const [name, setName] = React.useState("");
+  const [shouldPin, setShouldPin] = React.useState(false);
+  const trimmedName = name.trim();
+  const isValid = trimmedName.length > 0 && trimmedName.length <= 80;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await props.onSubmit(name);
+    if (!isValid) {
+      return;
+    }
+    await props.onSubmit(trimmedName, shouldPin);
   };
 
   return (
-    <Modal title={props.title} closeLabel={props.closeLabel} onClose={props.onClose}>
-      <form className="modal-form" onSubmit={handleSubmit}>
+    <BottomSheet
+      title={props.title}
+      closeLabel={props.closeLabel}
+      onClose={props.onClose}
+      actions={
+        <button className="primary-button bottom-sheet__primary" disabled={props.isSubmitting || !isValid} form="create-task-form" type="submit">
+          {props.createLabel}
+        </button>
+      }
+    >
+      <form id="create-task-form" className="modal-form" onSubmit={handleSubmit}>
         <label>
           <span>{props.nameLabel}</span>
           <input
             autoFocus
-            maxLength={255}
+            maxLength={80}
             placeholder={props.placeholder}
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
         </label>
 
-        {props.errorText ? <p className="form-error">{props.errorText}</p> : null}
+        <label className="pin-checkbox">
+          <input checked={shouldPin} onChange={(event) => setShouldPin(event.target.checked)} type="checkbox" />
+          <span>{props.pinLabel}</span>
+        </label>
 
-        <div className="modal-actions">
-          <button className="secondary-button" onClick={props.onClose} type="button">
-            {props.cancelLabel}
-          </button>
-          <button className="primary-button" disabled={props.isSubmitting} type="submit">
-            {props.saveLabel}
-          </button>
-        </div>
+        {props.errorText ? <p className="form-error">{props.errorText}</p> : null}
       </form>
-    </Modal>
+    </BottomSheet>
   );
 }
 
@@ -208,9 +181,9 @@ type TaskDetailsModalProps = {
   task: TaskDetail | null;
   language: string;
   iconPack: IconPackId;
+  title: string;
   closeLabel: string;
   saveLabel: string;
-  cancelLabel: string;
   editNameLabel: string;
   createdAtLabel: string;
   rewardTotalLabel: string;
@@ -218,11 +191,12 @@ type TaskDetailsModalProps = {
   pinLabel: string;
   unpinLabel: string;
   archiveLabel: string;
-  closeText: string;
+  restoreArchiveHint: string;
   loadingText: string;
   errorText: string | null;
   isLoading: boolean;
   isSubmitting: boolean;
+  history: TaskListItem["history"];
   onClose: () => void;
   onSaveName: (name: string) => Promise<void>;
   onTogglePin: () => Promise<void>;
@@ -233,9 +207,9 @@ function TaskDetailsModal({
   task,
   language,
   iconPack,
+  title,
   closeLabel,
   saveLabel,
-  cancelLabel,
   editNameLabel,
   createdAtLabel,
   rewardTotalLabel,
@@ -243,11 +217,12 @@ function TaskDetailsModal({
   pinLabel,
   unpinLabel,
   archiveLabel,
-  closeText,
+  restoreArchiveHint,
   loadingText,
   errorText,
   isLoading,
   isSubmitting,
+  history,
   onClose,
   onSaveName,
   onTogglePin,
@@ -259,23 +234,58 @@ function TaskDetailsModal({
     setName(task?.name ?? "");
   }, [task?.id, task?.name]);
 
+  const trimmedName = name.trim();
+  const savedName = task?.name ?? "";
+  const hasNameChanges = task !== null && trimmedName !== savedName;
+  const isNameValid = trimmedName.length > 0 && trimmedName.length <= 80;
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await onSaveName(name);
+    if (!hasNameChanges || !isNameValid) {
+      return;
+    }
+    await onSaveName(trimmedName);
   };
 
   return (
-    <Modal title={task?.name ?? loadingText} closeLabel={closeLabel} onClose={onClose}>
-      {isLoading || task === null ? (
-        <div className="modal-state">{loadingText}</div>
-      ) : (
-        <div className="modal-stack">
-          <dl className="detail-grid">
-            <div>
-              <dt>{createdAtLabel}</dt>
-              <dd>{formatTimestamp(language, task.created_at)}</dd>
-            </div>
-          </dl>
+    <BottomSheet
+      title={task === null && isLoading ? loadingText : title}
+      closeLabel={closeLabel}
+      onClose={onClose}
+      actions={
+        task ? (
+          <>
+            {hasNameChanges ? (
+              <button
+                className="primary-button bottom-sheet__primary"
+                disabled={isSubmitting || !isNameValid}
+                form="edit-task-form"
+                type="submit"
+              >
+                {saveLabel}
+              </button>
+            ) : null}
+            <button className="danger-button bottom-sheet__primary" disabled={isSubmitting} onClick={() => void onArchive()} type="button">
+              {archiveLabel}
+            </button>
+            {!hasNameChanges ? <p className="bottom-sheet__hint">{restoreArchiveHint}</p> : null}
+          </>
+        ) : null
+      }
+    >
+      {isLoading || task === null ? <div className="modal-state">{loadingText}</div> : null}
+      {!isLoading && task !== null ? (
+        <div className="task-sheet">
+          <form id="edit-task-form" className="modal-form" onSubmit={handleSubmit}>
+            <label>
+              <span>{editNameLabel}</span>
+              <input maxLength={80} value={name} onChange={(event) => setName(event.target.value)} />
+            </label>
+          </form>
+
+          <button className="task-sheet__pin" disabled={isSubmitting} onClick={() => void onTogglePin()} type="button">
+            {task.is_pinned ? unpinLabel : pinLabel}
+          </button>
 
           <StatsMiniCard
             iconPack={iconPack}
@@ -285,38 +295,21 @@ function TaskDetailsModal({
             punishmentCount={task.total_punishment}
           />
 
-          <form className="modal-form" onSubmit={handleSubmit}>
-            <label>
-              <span>{editNameLabel}</span>
-              <input maxLength={255} value={name} onChange={(event) => setName(event.target.value)} />
-            </label>
-
-            {errorText ? <p className="form-error">{errorText}</p> : null}
-
-            <div className="modal-actions">
-              <button className="secondary-button" onClick={onClose} type="button">
-                {cancelLabel}
-              </button>
-              <button className="primary-button" disabled={isSubmitting} type="submit">
-                {saveLabel}
-              </button>
+          <dl className="detail-grid">
+            <div>
+              <dt>{createdAtLabel}</dt>
+              <dd>{formatTimestamp(language, task.created_at)}</dd>
             </div>
-          </form>
+          </dl>
 
-          <div className="stack-actions">
-            <button className="secondary-button" disabled={isSubmitting} onClick={() => void onTogglePin()} type="button">
-              {task.is_pinned ? unpinLabel : pinLabel}
-            </button>
-            <button className="danger-button" disabled={isSubmitting} onClick={() => void onArchive()} type="button">
-              {archiveLabel}
-            </button>
-            <button className="ghost-button" onClick={onClose} type="button">
-              {closeText}
-            </button>
+          <div className="task-sheet__history">
+            <TaskHistory history={history} />
           </div>
+
+          {errorText ? <p className="form-error">{errorText}</p> : null}
         </div>
-      )}
-    </Modal>
+      ) : null}
+    </BottomSheet>
   );
 }
 
@@ -338,13 +331,16 @@ export function AppTasksPage() {
   const [isLoadingTask, setIsLoadingTask] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
-  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = React.useState(false);
   const [pageError, setPageError] = React.useState<string | null>(null);
   const [modalError, setModalError] = React.useState<string | null>(null);
 
   const iconPack = settings?.icon_pack ?? "cookie_whip";
   const pinnedTasks = React.useMemo(() => sortPinnedTasks(tasks.filter((task) => task.is_pinned)), [tasks]);
   const otherTasks = React.useMemo(() => sortOtherTasks(tasks.filter((task) => !task.is_pinned)), [tasks]);
+  const selectedTaskListItem = React.useMemo(
+    () => tasks.find((task) => task.id === selectedTaskId) ?? null,
+    [selectedTaskId, tasks],
+  );
 
   React.useEffect(() => {
     let isMounted = true;
@@ -475,12 +471,20 @@ export function AppTasksPage() {
     [],
   );
 
-  const handleCreateTask = async (name: string) => {
+  const handleCreateTask = async (name: string, shouldPin: boolean) => {
     await runMutation(async () => {
-      await tasksApi.create(name);
+      const createdTask = await tasksApi.create(name);
+      if (shouldPin) {
+        try {
+          await tasksApi.pin(createdTask.id);
+        } catch {
+          showToast(dictionary.tasksPage.createPinnedError);
+        }
+      }
       setIsAddModalOpen(false);
       refreshTasks();
-    }, dictionary.common.genericError);
+      refreshSummary();
+    }, dictionary.tasksPage.taskSaveError);
   };
 
   const handleSetTaskStatus = async (taskId: string, nextStatus: TaskStatus) => {
@@ -530,11 +534,17 @@ export function AppTasksPage() {
       return;
     }
 
-    await runMutation(async () => {
+    setIsSubmitting(true);
+    setModalError(null);
+    try {
       await tasksApi.update(selectedTaskId, name);
       refreshTasks();
       await refreshSelectedTask();
-    }, dictionary.common.genericError);
+    } catch {
+      showToast(dictionary.tasksPage.taskSaveError);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleTogglePin = async () => {
@@ -542,7 +552,9 @@ export function AppTasksPage() {
       return;
     }
 
-    await runMutation(async () => {
+    setIsSubmitting(true);
+    setModalError(null);
+    try {
       if (selectedTask.is_pinned) {
         await tasksApi.unpin(selectedTaskId);
       } else {
@@ -550,7 +562,11 @@ export function AppTasksPage() {
       }
       refreshTasks();
       await refreshSelectedTask();
-    }, dictionary.common.genericError);
+    } catch {
+      showToast(dictionary.tasksPage.taskSaveError);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleArchive = async () => {
@@ -558,14 +574,19 @@ export function AppTasksPage() {
       return;
     }
 
-    await runMutation(async () => {
+    setIsSubmitting(true);
+    setModalError(null);
+    try {
       await tasksApi.archive(selectedTaskId);
-      setIsArchiveConfirmOpen(false);
       setSelectedTaskId(null);
       setSelectedTask(null);
       refreshTasks();
       refreshSummary();
-    }, dictionary.common.genericError);
+    } catch {
+      showToast(dictionary.tasksPage.taskSaveError);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -712,9 +733,9 @@ export function AppTasksPage() {
           title={dictionary.tasksPage.addTaskTitle}
           closeLabel={dictionary.common.close}
           nameLabel={dictionary.tasksPage.taskName}
+          pinLabel={dictionary.tasksPage.pinTask}
           placeholder={dictionary.tasksPage.taskNamePlaceholder}
-          saveLabel={dictionary.common.save}
-          cancelLabel={dictionary.common.cancel}
+          createLabel={dictionary.common.create}
           errorText={modalError}
           isSubmitting={isSubmitting}
           onClose={() => {
@@ -725,50 +746,35 @@ export function AppTasksPage() {
         />
       ) : null}
 
-      {selectedTaskId !== null && !isArchiveConfirmOpen ? (
+      {selectedTaskId !== null ? (
         <TaskDetailsModal
           task={selectedTask}
           language={language}
           iconPack={iconPack}
+          title={dictionary.tasksPage.editTitle}
           closeLabel={dictionary.common.close}
           saveLabel={dictionary.common.save}
-          cancelLabel={dictionary.common.cancel}
           editNameLabel={dictionary.tasksPage.editName}
           createdAtLabel={dictionary.tasksPage.createdAt}
           rewardTotalLabel={dictionary.tasksPage.rewardShort}
           punishmentTotalLabel={dictionary.tasksPage.punishmentShort}
-          pinLabel={dictionary.tasksPage.pin}
-          unpinLabel={dictionary.tasksPage.unpin}
+          pinLabel={dictionary.tasksPage.pinTask}
+          unpinLabel={dictionary.tasksPage.unpinTask}
           archiveLabel={dictionary.tasksPage.archive}
-          closeText={dictionary.common.close}
+          restoreArchiveHint={dictionary.tasksPage.restoreArchiveHint}
           loadingText={dictionary.common.loading}
           errorText={modalError}
           isLoading={isLoadingTask}
           isSubmitting={isSubmitting}
+          history={selectedTaskListItem?.history ?? []}
           onClose={() => {
             setSelectedTaskId(null);
             setSelectedTask(null);
-            setIsArchiveConfirmOpen(false);
             setModalError(null);
           }}
           onSaveName={handleSaveTaskName}
           onTogglePin={handleTogglePin}
-          onArchive={async () => {
-            setIsArchiveConfirmOpen(true);
-          }}
-        />
-      ) : null}
-
-      {isArchiveConfirmOpen ? (
-        <ArchiveConfirmModal
-          title={dictionary.tasksPage.archiveConfirmTitle}
-          text={dictionary.tasksPage.archiveConfirmText}
-          closeLabel={dictionary.common.close}
-          confirmLabel={dictionary.common.confirm}
-          cancelLabel={dictionary.common.cancel}
-          isSubmitting={isSubmitting}
-          onClose={() => setIsArchiveConfirmOpen(false)}
-          onConfirm={handleArchive}
+          onArchive={handleArchive}
         />
       ) : null}
     </AppScaffold>
