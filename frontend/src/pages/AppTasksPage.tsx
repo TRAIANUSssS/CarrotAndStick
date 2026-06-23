@@ -1,19 +1,20 @@
 import React from "react";
-import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 
 import type { IconPackId } from "../api/auth";
 import { ApiError } from "../api/client";
 import type { StatsPeriod, StatsSummary } from "../api/stats";
 import { statsApi } from "../api/stats";
-import type { TaskDetail, TaskHistoryItem, TaskListItem, TaskStatus } from "../api/tasks";
+import type { TaskDetail, TaskListItem, TaskStatus } from "../api/tasks";
 import { tasksApi } from "../api/tasks";
 import { AppScaffold } from "../components/AppScaffold";
 import { Modal } from "../components/Modal";
 import { StatusIcon } from "../components/StatusIcon";
+import { HeroStats, PeriodTabs, TaskGroup, TaskRow } from "../components/TasksCore";
+import { useToast } from "../components/Toast";
 import { useAuth } from "../features/auth/AuthContext";
-import { buildRecentDateRange, clampToToday, getLocalDateInputValue } from "../lib/dates";
-import { formatCalendarDate, formatCompactNumber, formatTimestamp } from "../lib/format";
+import { clampToToday, getLocalDateInputValue } from "../lib/dates";
+import { formatTimestamp } from "../lib/format";
 
 const HOME_PERIODS: StatsPeriod[] = ["all_time", "week", "day", "month", "year"];
 
@@ -32,234 +33,58 @@ function getTaskCreatedDate(task: Pick<TaskListItem, "created_at"> | Pick<TaskDe
   return task.created_at.slice(0, 10);
 }
 
-function getTaskStatusText(
-  status: TaskStatus,
-  labels: {
-    reward: string;
-    punishment: string;
-    empty: string;
-  },
-) {
-  if (status === "reward") {
-    return labels.reward;
-  }
-  if (status === "punishment") {
-    return labels.punishment;
-  }
-  return labels.empty;
-}
-
-type SummaryPanelProps = {
-  language: string;
-  iconPack: IconPackId;
-  title: string;
-  summaryLabel: string;
-  periodLabel: string;
-  rewardLabel: string;
-  punishmentLabel: string;
-  labels: Record<StatsPeriod, string>;
-  summary: StatsSummary | null;
-  periods: StatsPeriod[];
-  activePeriod: StatsPeriod;
-  isLoading: boolean;
-  onSelectPeriod: (period: StatsPeriod) => void;
-};
-
-function SummaryPanel({
-  language,
-  iconPack,
-  title,
-  summaryLabel,
-  periodLabel,
-  rewardLabel,
-  punishmentLabel,
-  labels,
-  summary,
-  periods,
-  activePeriod,
-  isLoading,
-  onSelectPeriod,
-}: SummaryPanelProps) {
-  return (
-    <section className="summary-card summary-card--hero">
-      <p className="eyebrow">{summaryLabel}</p>
-      <div className="summary-hero">
-        <div>
-          <h1 className="page-title">{title}</h1>
-        </div>
-
-        <div className="summary-card__counts" aria-busy={isLoading}>
-          <div className="summary-pill summary-pill--reward">
-            <StatusIcon iconPack={iconPack} status="reward" label={rewardLabel} />
-            <div>
-              <span>{rewardLabel}</span>
-              <strong>{formatCompactNumber(language, summary?.reward_count ?? 0)}</strong>
-            </div>
-          </div>
-          <div className="summary-pill summary-pill--punishment">
-            <StatusIcon iconPack={iconPack} status="punishment" label={punishmentLabel} />
-            <div>
-              <span>{punishmentLabel}</span>
-              <strong>{formatCompactNumber(language, summary?.punishment_count ?? 0)}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="period-tabs" role="tablist" aria-label={periodLabel}>
-        {periods.map((period) => (
-          <button
-            key={period}
-            className={clsx("period-tabs__item", period === activePeriod && "period-tabs__item--active")}
-            onClick={() => onSelectPeriod(period)}
-            type="button"
-            role="tab"
-            aria-selected={period === activePeriod}
-            aria-pressed={period === activePeriod}
-          >
-            {labels[period]}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-type HistoryTone = "reward" | "punishment" | "empty" | "missing";
-
-function getHistoryTone(entry: TaskHistoryItem | undefined, createdDate: string, date: string): HistoryTone {
-  if (date < createdDate) {
-    return "missing";
-  }
-  if (entry?.status === "reward") {
-    return "reward";
-  }
-  if (entry?.status === "punishment") {
-    return "punishment";
-  }
-  return "empty";
-}
-
-type TaskCardProps = {
-  task: TaskListItem;
-  selectedDate: string;
-  language: string;
-  iconPack: IconPackId;
-  emptyLabel: string;
-  rewardLabel: string;
-  punishmentLabel: string;
-  rewardShortLabel: string;
-  punishmentShortLabel: string;
-  onOpen: (taskId: string) => void;
-  onSetStatus: (taskId: string, status: TaskStatus) => void;
-};
-
-function TaskCard({
-  task,
-  selectedDate,
-  language,
-  iconPack,
-  emptyLabel,
-  rewardLabel,
-  punishmentLabel,
-  rewardShortLabel,
-  punishmentShortLabel,
-  onOpen,
-  onSetStatus,
-}: TaskCardProps) {
-  const createdDate = getTaskCreatedDate(task);
-  const historyByDate = new Map(task.history.map((entry) => [entry.date, entry]));
-  const historyDates = buildRecentDateRange(selectedDate, 5);
-  const canMarkSelectedDate = selectedDate >= createdDate;
-  const statusText = getTaskStatusText(task.selected_date_status, {
-    reward: rewardShortLabel,
-    punishment: punishmentShortLabel,
-    empty: emptyLabel,
+function sortPinnedTasks(tasks: TaskListItem[]) {
+  return [...tasks].sort((left, right) => {
+    const leftPinned = left.pinned_at ?? left.created_at;
+    const rightPinned = right.pinned_at ?? right.created_at;
+    return leftPinned.localeCompare(rightPinned) || left.created_at.localeCompare(right.created_at);
   });
+}
 
-  return (
-    <article className="task-card">
-      <button className="task-card__body task-card__body--mobile" onClick={() => onOpen(task.id)} type="button">
-        <div className="task-card__copy">
-          <div className="task-card__title-row">
-            <h3>{task.name}</h3>
-            <span className="task-card__date">{formatCalendarDate(language, selectedDate)}</span>
-          </div>
-          <div className="task-card__meta">
-            <span>{formatCalendarDate(language, selectedDate)}</span>
-            <span className="task-card__meta-separator" aria-hidden="true">
-              •
-            </span>
-            <span>{statusText}</span>
-          </div>
-        </div>
-      </button>
+function sortOtherTasks(tasks: TaskListItem[]) {
+  return [...tasks].sort((left, right) => left.created_at.localeCompare(right.created_at));
+}
 
-      <div className="task-card__footer">
-        <div className="task-history task-history--compact" aria-hidden="true">
-          {historyDates.map((date) => {
-            const entry = historyByDate.get(date);
-            const tone = getHistoryTone(entry, createdDate, date);
+function updateTaskStatusLocally(
+  items: TaskListItem[],
+  taskId: string,
+  selectedDate: string,
+  nextStatus: TaskStatus,
+) {
+  return items.map((item) => {
+    if (item.id !== taskId) {
+      return item;
+    }
 
-            return (
-              <span key={date} className={clsx("history-token", "history-token--compact", `history-token--${tone}`)}>
-                {tone === "reward" ? <StatusIcon iconPack={iconPack} status="reward" label={rewardLabel} /> : null}
-                {tone === "punishment" ? (
-                  <StatusIcon iconPack={iconPack} status="punishment" label={punishmentLabel} />
-                ) : null}
-              </span>
-            );
-          })}
-        </div>
+    const historyByDate = new Map(item.history.map((entry) => [entry.date, entry.status]));
+    historyByDate.set(selectedDate, nextStatus);
+    const history = Array.from(historyByDate.entries())
+      .map(([date, status]) => ({ date, status }))
+      .filter((entry) => entry.date >= getTaskCreatedDate(item))
+      .sort((left, right) => left.date.localeCompare(right.date))
+      .slice(-7);
 
-        <div className="task-actions">
-        <button
-          className={clsx("mark-button", "mark-button--reward", task.selected_date_status === "reward" && "mark-button--active")}
-          onClick={(event) => {
-            event.stopPropagation();
-            onSetStatus(task.id, task.selected_date_status === "reward" ? null : "reward");
-          }}
-          type="button"
-          aria-label={rewardLabel}
-          aria-pressed={task.selected_date_status === "reward"}
-          disabled={!canMarkSelectedDate}
-        >
-          <StatusIcon iconPack={iconPack} status="reward" label={rewardLabel} />
-        </button>
-        <button
-          className={clsx(
-            "mark-button",
-            "mark-button--punishment",
-            task.selected_date_status === "punishment" && "mark-button--active",
-          )}
-          onClick={(event) => {
-            event.stopPropagation();
-            onSetStatus(task.id, task.selected_date_status === "punishment" ? null : "punishment");
-          }}
-          type="button"
-          aria-label={punishmentLabel}
-          aria-pressed={task.selected_date_status === "punishment"}
-          disabled={!canMarkSelectedDate}
-        >
-          <StatusIcon iconPack={iconPack} status="punishment" label={punishmentLabel} />
-        </button>
-        <button
-          className={clsx("mark-button", "mark-button--empty", task.selected_date_status === null && "mark-button--active")}
-          onClick={(event) => {
-            event.stopPropagation();
-            onSetStatus(task.id, null);
-          }}
-          type="button"
-          aria-label={emptyLabel}
-          aria-pressed={task.selected_date_status === null}
-          disabled={!canMarkSelectedDate}
-        >
-          <span className="mark-button__empty-circle" aria-hidden="true" />
-        </button>
-        </div>
-      </div>
-    </article>
-  );
+    return {
+      ...item,
+      selected_date_status: nextStatus,
+      history,
+    };
+  });
+}
+
+function adjustSummary(summary: StatsSummary | null, previousStatus: TaskStatus, nextStatus: TaskStatus) {
+  if (summary === null || previousStatus === nextStatus) {
+    return summary;
+  }
+
+  const rewardDelta = (nextStatus === "reward" ? 1 : 0) - (previousStatus === "reward" ? 1 : 0);
+  const punishmentDelta = (nextStatus === "punishment" ? 1 : 0) - (previousStatus === "punishment" ? 1 : 0);
+
+  return {
+    ...summary,
+    reward_count: Math.max(0, summary.reward_count + rewardDelta),
+    punishment_count: Math.max(0, summary.punishment_count + punishmentDelta),
+  };
 }
 
 type StatsMiniCardProps = {
@@ -497,14 +322,17 @@ function TaskDetailsModal({
 
 export function AppTasksPage() {
   const { dictionary, language, settings } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(getLocalDateInputValue);
   const [tasks, setTasks] = React.useState<TaskListItem[]>([]);
   const [summary, setSummary] = React.useState<StatsSummary | null>(null);
   const [activePeriod, setActivePeriod] = React.useState<StatsPeriod>("week");
   const [reloadSeed, setReloadSeed] = React.useState(0);
+  const [summaryReloadSeed, setSummaryReloadSeed] = React.useState(0);
   const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
   const [selectedTask, setSelectedTask] = React.useState<TaskDetail | null>(null);
+  const [lockedTaskIds, setLockedTaskIds] = React.useState<Set<string>>(() => new Set());
   const [isLoadingTasks, setIsLoadingTasks] = React.useState(true);
   const [isLoadingSummary, setIsLoadingSummary] = React.useState(true);
   const [isLoadingTask, setIsLoadingTask] = React.useState(false);
@@ -515,8 +343,8 @@ export function AppTasksPage() {
   const [modalError, setModalError] = React.useState<string | null>(null);
 
   const iconPack = settings?.icon_pack ?? "cookie_whip";
-  const pinnedTasks = React.useMemo(() => tasks.filter((task) => task.is_pinned), [tasks]);
-  const otherTasks = React.useMemo(() => tasks.filter((task) => !task.is_pinned), [tasks]);
+  const pinnedTasks = React.useMemo(() => sortPinnedTasks(tasks.filter((task) => task.is_pinned)), [tasks]);
+  const otherTasks = React.useMemo(() => sortOtherTasks(tasks.filter((task) => !task.is_pinned)), [tasks]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -572,7 +400,7 @@ export function AppTasksPage() {
     return () => {
       isMounted = false;
     };
-  }, [activePeriod, dictionary.common.genericError, selectedDate]);
+  }, [activePeriod, dictionary.common.genericError, selectedDate, summaryReloadSeed]);
 
   React.useEffect(() => {
     if (selectedTaskId === null) {
@@ -609,6 +437,10 @@ export function AppTasksPage() {
 
   const refreshTasks = React.useCallback(() => {
     setReloadSeed((current) => current + 1);
+  }, []);
+
+  const refreshSummary = React.useCallback(() => {
+    setSummaryReloadSeed((current) => current + 1);
   }, []);
 
   const refreshSelectedTask = React.useCallback(async () => {
@@ -653,17 +485,44 @@ export function AppTasksPage() {
 
   const handleSetTaskStatus = async (taskId: string, nextStatus: TaskStatus) => {
     const task = tasks.find((item) => item.id === taskId);
-    if (!task) {
+    if (!task || lockedTaskIds.has(taskId)) {
       return;
     }
 
-    await runMutation(async () => {
+    const previousTasks = tasks;
+    const previousSummary = summary;
+    const previousStatus = task.selected_date_status;
+    const startedAt = window.performance.now();
+
+    setLockedTaskIds((current) => new Set(current).add(taskId));
+    setPageError(null);
+    setTasks((current) => updateTaskStatusLocally(current, taskId, selectedDate, nextStatus));
+    setSummary((current) => adjustSummary(current, previousStatus, nextStatus));
+
+    try {
       await tasksApi.setMark(taskId, selectedDate, nextStatus);
       refreshTasks();
+      refreshSummary();
       if (selectedTaskId === taskId) {
         await refreshSelectedTask();
       }
-    }, dictionary.common.genericError);
+    } catch {
+      setTasks(previousTasks);
+      setSummary(previousSummary);
+      showToast(dictionary.tasksPage.markSaveError);
+    } finally {
+      const elapsed = window.performance.now() - startedAt;
+      window.setTimeout(
+        () => {
+          setLockedTaskIds((current) => {
+            const next = new Set(current);
+            next.delete(taskId);
+            return next;
+          });
+        },
+        Math.max(0, 300 - elapsed),
+      );
+    }
   };
 
   const handleSaveTaskName = async (name: string) => {
@@ -705,6 +564,7 @@ export function AppTasksPage() {
       setSelectedTaskId(null);
       setSelectedTask(null);
       refreshTasks();
+      refreshSummary();
     }, dictionary.common.genericError);
   };
 
@@ -712,30 +572,32 @@ export function AppTasksPage() {
     <AppScaffold>
       <section className="app-page tasks-page">
         <header className="tasks-screen-header">
-          <div className="tasks-screen-header__title">
-            <span className="tasks-screen-header__icon">
-              <StatusIcon iconPack={iconPack} status="reward" label={dictionary.tasksPage.rewardShort} />
-            </span>
-            <h1>{dictionary.app.name}</h1>
-          </div>
-          <button className="ghost-button ghost-button--chip" onClick={() => navigate("/app/tasks/archived")} type="button">
-            {dictionary.tasksPage.archived}
+          <div className="tasks-screen-header__spacer" aria-hidden="true" />
+          <h1>{dictionary.app.name}</h1>
+          <button
+            className="archive-icon-button"
+            onClick={() => navigate("/app/tasks/archived")}
+            type="button"
+            aria-label={dictionary.tasksPage.archived}
+          >
+            <span className="archive-icon" aria-hidden="true" />
           </button>
         </header>
 
-        <SummaryPanel
+        <HeroStats
           language={language}
           iconPack={iconPack}
-          title={dictionary.tasksPage.pageTitle}
-          summaryLabel={dictionary.tasksPage.summaryLabel}
-          periodLabel={dictionary.tasksPage.periodLabel}
           rewardLabel={dictionary.tasksPage.rewardShort}
           punishmentLabel={dictionary.tasksPage.punishmentShort}
-          labels={dictionary.periods}
           summary={summary}
+          isLoading={isLoadingSummary}
+        />
+
+        <PeriodTabs
+          label={dictionary.tasksPage.periodLabel}
+          labels={dictionary.periods}
           periods={HOME_PERIODS}
           activePeriod={activePeriod}
-          isLoading={isLoadingSummary}
           onSelectPeriod={setActivePeriod}
         />
 
@@ -743,8 +605,8 @@ export function AppTasksPage() {
           {isLoadingSummary ? dictionary.common.loading : ""}
         </div>
 
-        <section className="toolbar-card">
-          <div className="toolbar-card__group toolbar-card__group--tasks">
+        <section className="toolbar-card" aria-label={dictionary.tasksPage.selectedDate}>
+          <div className="date-action-row">
             <label className="field-label">
               <span>{dictionary.tasksPage.selectedDate}</span>
               <input
@@ -756,7 +618,12 @@ export function AppTasksPage() {
                 aria-label={dictionary.tasksPage.selectedDate}
               />
             </label>
-            <button className="primary-button primary-button--task-add" onClick={() => setIsAddModalOpen(true)} type="button">
+            <button
+              className="primary-button primary-button--task-add"
+              onClick={() => setIsAddModalOpen(true)}
+              type="button"
+              aria-label={dictionary.tasksPage.addTask}
+            >
               {dictionary.tasksPage.addTask}
             </button>
           </div>
@@ -764,13 +631,7 @@ export function AppTasksPage() {
 
         {pageError ? <p className="form-error" role="alert">{pageError}</p> : null}
 
-        <section className="tasks-board" aria-busy={isLoadingTasks}>
-          <header className="tasks-board__header">
-            <div>
-              <h2>{dictionary.tasksPage.pageTitle}</h2>
-            </div>
-          </header>
-
+        <section className="tasks-list-section" aria-busy={isLoadingTasks} aria-label={dictionary.tasksPage.activeListLabel}>
           {isLoadingTasks ? <div className="panel-state">{dictionary.common.loading}</div> : null}
 
           {!isLoadingTasks && tasks.length === 0 ? (
@@ -781,59 +642,67 @@ export function AppTasksPage() {
           ) : null}
 
           {!isLoadingTasks && tasks.length > 0 ? (
-            <div className="task-groups">
+            <>
               {pinnedTasks.length > 0 ? (
-                <section className="task-group">
-                  <header className="task-group__header">
-                    <span className="task-group__eyebrow">{dictionary.tasksPage.pinnedGroup}</span>
-                  </header>
+                <TaskGroup
+                  storageKey="tasks.group.pinned.collapsed"
+                  title={dictionary.tasksPage.pinnedGroup}
+                  count={pinnedTasks.length}
+                  icon="pin"
+                  collapseLabel={dictionary.tasksPage.collapsePinnedGroup}
+                  expandLabel={dictionary.tasksPage.expandPinnedGroup}
+                >
                   <div className="task-list task-list--grouped">
                     {pinnedTasks.map((task) => (
-                      <TaskCard
+                      <TaskRow
                         key={task.id}
                         task={task}
                         selectedDate={selectedDate}
-                        language={language}
                         iconPack={iconPack}
-                        emptyLabel={dictionary.tasksPage.emptyMark}
                         rewardLabel={dictionary.tasksPage.reward}
                         punishmentLabel={dictionary.tasksPage.punishment}
-                        rewardShortLabel={dictionary.tasksPage.rewardShort}
-                        punishmentShortLabel={dictionary.tasksPage.punishmentShort}
+                        removeRewardLabel={dictionary.tasksPage.removeReward}
+                        removePunishmentLabel={dictionary.tasksPage.removePunishment}
+                        isLocked={lockedTaskIds.has(task.id)}
                         onOpen={setSelectedTaskId}
-                        onSetStatus={(taskId, status) => void handleSetTaskStatus(taskId, status)}
+                        onSetStatus={(rowTaskId, status) => void handleSetTaskStatus(rowTaskId, status)}
                       />
                     ))}
                   </div>
-                </section>
+                </TaskGroup>
               ) : null}
 
               {otherTasks.length > 0 ? (
-                <section className="task-group">
-                  <header className="task-group__header">
-                    <span className="task-group__eyebrow">{dictionary.tasksPage.otherGroup}</span>
-                  </header>
+                <TaskGroup
+                  storageKey="tasks.group.other.collapsed"
+                  title={dictionary.tasksPage.otherGroup}
+                  count={otherTasks.length}
+                  icon="list"
+                  collapseLabel={dictionary.tasksPage.collapseOtherGroup}
+                  expandLabel={dictionary.tasksPage.expandOtherGroup}
+                >
                   <div className="task-list task-list--grouped">
                     {otherTasks.map((task) => (
-                      <TaskCard
+                      <TaskRow
                         key={task.id}
                         task={task}
                         selectedDate={selectedDate}
-                        language={language}
                         iconPack={iconPack}
-                        emptyLabel={dictionary.tasksPage.emptyMark}
                         rewardLabel={dictionary.tasksPage.reward}
                         punishmentLabel={dictionary.tasksPage.punishment}
-                        rewardShortLabel={dictionary.tasksPage.rewardShort}
-                        punishmentShortLabel={dictionary.tasksPage.punishmentShort}
+                        removeRewardLabel={dictionary.tasksPage.removeReward}
+                        removePunishmentLabel={dictionary.tasksPage.removePunishment}
+                        isLocked={lockedTaskIds.has(task.id)}
                         onOpen={setSelectedTaskId}
-                        onSetStatus={(taskId, status) => void handleSetTaskStatus(taskId, status)}
+                        onSetStatus={(rowTaskId, status) => void handleSetTaskStatus(rowTaskId, status)}
                       />
                     ))}
                   </div>
-                </section>
+                </TaskGroup>
               ) : null}
-            </div>
+
+              <p className="tasks-hint">{dictionary.tasksPage.hint}</p>
+            </>
           ) : null}
         </section>
       </section>
