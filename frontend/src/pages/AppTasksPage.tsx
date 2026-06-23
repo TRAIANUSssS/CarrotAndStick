@@ -116,6 +116,62 @@ function StatsMiniCard({ iconPack, rewardLabel, punishmentLabel, rewardCount, pu
   );
 }
 
+function TaskListSkeleton() {
+  return (
+    <div className="tasks-skeleton" aria-hidden="true">
+      {Array.from({ length: 3 }, (_, index) => (
+        <article className="task-row task-row--skeleton" key={index}>
+          <div className="task-row__open">
+            <span className="skeleton-line skeleton-line--title" />
+            <div className="task-history task-history--compact">
+              {Array.from({ length: 7 }, (_unused, dotIndex) => (
+                <span className="history-dot history-dot--skeleton" key={dotIndex} />
+              ))}
+            </div>
+          </div>
+          <div className="status-action-group">
+            <span className="skeleton-action" />
+            <span className="skeleton-action" />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+type TasksRetryCardProps = {
+  title: string;
+  retryLabel: string;
+  onRetry: () => void;
+};
+
+function TasksRetryCard({ title, retryLabel, onRetry }: TasksRetryCardProps) {
+  return (
+    <div className="tasks-error-card" role="alert">
+      <strong>{title}</strong>
+      <button className="secondary-button" onClick={onRetry} type="button">
+        {retryLabel}
+      </button>
+    </div>
+  );
+}
+
+type TasksEmptyStateProps = {
+  title: string;
+  quote: string;
+  action: string;
+};
+
+function TasksEmptyState({ title, quote, action }: TasksEmptyStateProps) {
+  return (
+    <div className="tasks-empty-state">
+      <strong>{title}</strong>
+      <p className="tasks-empty-state__quote">{quote}</p>
+      <p className="tasks-empty-state__action">{action}</p>
+    </div>
+  );
+}
+
 type AddTaskModalProps = {
   title: string;
   closeLabel: string;
@@ -331,7 +387,8 @@ export function AppTasksPage() {
   const [isLoadingTask, setIsLoadingTask] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
-  const [pageError, setPageError] = React.useState<string | null>(null);
+  const [taskLoadError, setTaskLoadError] = React.useState<string | null>(null);
+  const [summaryError, setSummaryError] = React.useState<string | null>(null);
   const [modalError, setModalError] = React.useState<string | null>(null);
 
   const iconPack = settings?.icon_pack ?? "cookie_whip";
@@ -345,7 +402,7 @@ export function AppTasksPage() {
   React.useEffect(() => {
     let isMounted = true;
     setIsLoadingTasks(true);
-    setPageError(null);
+    setTaskLoadError(null);
 
     tasksApi
       .list(selectedDate)
@@ -356,7 +413,7 @@ export function AppTasksPage() {
       })
       .catch((error: unknown) => {
         if (isMounted) {
-          setPageError(getErrorMessage(error, dictionary.common.genericError));
+          setTaskLoadError(getErrorMessage(error, dictionary.tasksPage.loadError));
         }
       })
       .finally(() => {
@@ -368,12 +425,12 @@ export function AppTasksPage() {
     return () => {
       isMounted = false;
     };
-  }, [dictionary.common.genericError, reloadSeed, selectedDate]);
+  }, [dictionary.tasksPage.loadError, reloadSeed, selectedDate]);
 
   React.useEffect(() => {
     let isMounted = true;
     setIsLoadingSummary(true);
-    setPageError(null);
+    setSummaryError(null);
 
     statsApi
       .summary(activePeriod, selectedDate)
@@ -384,7 +441,7 @@ export function AppTasksPage() {
       })
       .catch((error: unknown) => {
         if (isMounted) {
-          setPageError(getErrorMessage(error, dictionary.common.genericError));
+          setSummaryError(getErrorMessage(error, dictionary.tasksPage.summaryLoadError));
         }
       })
       .finally(() => {
@@ -396,7 +453,7 @@ export function AppTasksPage() {
     return () => {
       isMounted = false;
     };
-  }, [activePeriod, dictionary.common.genericError, selectedDate, summaryReloadSeed]);
+  }, [activePeriod, dictionary.tasksPage.summaryLoadError, selectedDate, summaryReloadSeed]);
 
   React.useEffect(() => {
     if (selectedTaskId === null) {
@@ -456,14 +513,12 @@ export function AppTasksPage() {
     async (action: () => Promise<void>, failureFallback: string) => {
       setIsSubmitting(true);
       setModalError(null);
-      setPageError(null);
 
       try {
         await action();
       } catch (error) {
         const message = getErrorMessage(error, failureFallback);
         setModalError(message);
-        setPageError(message);
       } finally {
         setIsSubmitting(false);
       }
@@ -499,7 +554,7 @@ export function AppTasksPage() {
     const startedAt = window.performance.now();
 
     setLockedTaskIds((current) => new Set(current).add(taskId));
-    setPageError(null);
+    setTaskLoadError(null);
     setTasks((current) => updateTaskStatusLocally(current, taskId, selectedDate, nextStatus));
     setSummary((current) => adjustSummary(current, previousStatus, nextStatus));
 
@@ -626,6 +681,8 @@ export function AppTasksPage() {
           {isLoadingSummary ? dictionary.common.loading : ""}
         </div>
 
+        {summaryError ? <p className="form-error form-error--compact" role="alert">{summaryError}</p> : null}
+
         <section className="toolbar-card" aria-label={dictionary.tasksPage.selectedDate}>
           <div className="date-action-row">
             <label className="field-label">
@@ -650,19 +707,22 @@ export function AppTasksPage() {
           </div>
         </section>
 
-        {pageError ? <p className="form-error" role="alert">{pageError}</p> : null}
-
         <section className="tasks-list-section" aria-busy={isLoadingTasks} aria-label={dictionary.tasksPage.activeListLabel}>
-          {isLoadingTasks ? <div className="panel-state">{dictionary.common.loading}</div> : null}
+          {isLoadingTasks ? <TaskListSkeleton /> : null}
 
-          {!isLoadingTasks && tasks.length === 0 ? (
-            <div className="panel-state panel-state--empty">
-              <strong>{dictionary.tasksPage.emptyTitle}</strong>
-              <p>{dictionary.tasksPage.emptyBody}</p>
-            </div>
+          {!isLoadingTasks && taskLoadError ? (
+            <TasksRetryCard title={taskLoadError} retryLabel={dictionary.tasksPage.retry} onRetry={refreshTasks} />
           ) : null}
 
-          {!isLoadingTasks && tasks.length > 0 ? (
+          {!isLoadingTasks && taskLoadError === null && tasks.length === 0 ? (
+            <TasksEmptyState
+              title={dictionary.tasksPage.emptyTitle}
+              quote={dictionary.tasksPage.emptyQuote}
+              action={dictionary.tasksPage.emptyAction}
+            />
+          ) : null}
+
+          {!isLoadingTasks && taskLoadError === null && tasks.length > 0 ? (
             <>
               {pinnedTasks.length > 0 ? (
                 <TaskGroup

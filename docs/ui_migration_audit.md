@@ -24,6 +24,13 @@ The main gaps are:
 
 Expected implementation difficulty: medium for Tasks/core styling, medium-high for Stats because it requires new data shapes and components.
 
+## Implementation Progress
+
+- Phase 3 Token Foundation is implemented in `frontend/src/style.css`.
+- Phase 4 Core Components is implemented for BottomNavigation, Toast, Tasks core components, BottomSheet, and TaskModal foundation.
+- Phase 5A Tasks polish is implemented for task-list skeleton loading, quiet retry card error state, UI Bible empty state, and narrow-screen row/date-action spacing.
+- Tasks period auto-rotation is intentionally deferred until the end of Tasks migration.
+
 ## Current Frontend Map
 
 Main files:
@@ -569,9 +576,9 @@ Rationale:
    Icon packs are not used inside TaskHistory indicators. Icon packs are used for Reward/Punishment action buttons and HeroStats.
 4. CreateTaskModal should prefer atomic create-with-pin. Create-then-pin is acceptable only if atomic creation is unavailable, and must not expose an intermediate unpinned visual state. If pinning fails after creation, rollback and show a quiet toast.
 
-## Remaining Decision Before Implementation
+## Deferred Decisions
 
-1. Should Tasks period auto-rotation be implemented now, or deferred if it feels disruptive during daily use?
+1. Tasks period auto-rotation is deferred until the end of Tasks migration.
 
 ## Phase 2 Output Checklist
 

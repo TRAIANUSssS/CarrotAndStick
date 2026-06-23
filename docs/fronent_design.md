@@ -215,6 +215,11 @@ Extraction should happen only where it reduces duplication or makes UI Bible com
 
 Preserve screen purpose, navigation, and product behavior.
 
+Phase 5A status:
+
+- Tasks screen polish is implemented for skeleton loading, retry error state, empty state, and narrow-screen spacing.
+- Tasks period auto-rotation remains deferred until the end of Tasks migration.
+
 ### Phase 6: Auth And Modal Surfaces
 
 - Bring Login and Register screens into UI Bible compliance.
